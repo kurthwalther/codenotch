@@ -217,8 +217,8 @@ struct ProviderCell: View {
                     Text(secondary.map { "\(Int(($0.remaining * 100).rounded()))%" } ?? " ")
                         .font(Typography.barPercent)
                         .foregroundStyle(Palette.textSecondary)
+                        .fixedSize()
                         .frame(height: NotchLayout.secondaryBarLabelHeight)
-                        .contentTransition(.numericText())
                 }
                 .padding(.bottom, NotchLayout.secondaryBarGap)
             }
@@ -253,14 +253,17 @@ struct ProviderCell: View {
     @ViewBuilder
     private var secondaryBar: some View {
         if let secondary {
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.barTrack)
-                    Capsule()
-                        .fill(secondary.band(thresholds).color)
-                        .frame(width: max(proxy.size.height, proxy.size.width * CGFloat(secondary.remaining)))
-                        .animation(NotchMotion.reading, value: secondary)
-                }
+            // Sized outright: the bar's width is a layout constant, so there
+            // is nothing to measure — and a measuring container here left
+            // the number under it undrawn.
+            let width = NotchLayout.secondaryBarWidth
+            let height = NotchLayout.secondaryBarHeight
+            ZStack(alignment: .leading) {
+                Capsule().fill(Palette.barTrack)
+                Capsule()
+                    .fill(secondary.band(thresholds).color)
+                    .frame(width: max(height, width * CGFloat(secondary.remaining)))
+                    .animation(NotchMotion.reading, value: secondary)
             }
         } else {
             Color.clear
