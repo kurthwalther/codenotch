@@ -131,6 +131,30 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            // What the notch says on its own, when an agent has something to
+            // say: a note beside it with the agent's last words.
+            Section("Agents") {
+                Toggle("Show a note when an agent finishes or needs you",
+                       isOn: $preferences.noticesEnabled)
+                HStack(spacing: 10) {
+                    Text("Stays for")
+                    Slider(value: $preferences.noticeSeconds,
+                           in: Preferences.noticeSecondsRange, step: 1)
+                        .disabled(!preferences.noticesEnabled)
+                    Text("\(Int(preferences.noticeSeconds.rounded())) s")
+                        .monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
+                        .foregroundStyle(.secondary)
+                }
+                Text("A small card beside the notch with the agent's name and the "
+                     + "start of what it last said, whether the notch is shown, on "
+                     + "hover or hidden. It stays while the pointer is on it; a "
+                     + "click takes you to the session.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             // Startup and updates together: both are about what Codenotch does
             // without being asked, and one switch under its own header looked
             // like an oversight rather than a section.
@@ -253,7 +277,7 @@ struct SettingsView: View {
     static let width: CGFloat = 500
     /// Tall enough that Startup and Updates are visible without scrolling —
     /// four account rows push everything below them a long way down.
-    static let height: CGFloat = 760
+    static let height: CGFloat = 800
 
     /// Says the one thing people will try and find does not work. A power
     /// assertion is exactly what Caffeine and Amphetamine hold, and it stops

@@ -104,8 +104,9 @@ final class NotchViewModel: ObservableObject {
     /// How much smaller the notch draws at rest, about the point where it
     /// meets the bezel, so it stays flush.
     static let restingScale: CGFloat = 0.8
-    /// And how much quieter: rings, glyphs, numbers, bars and handles.
-    static let restingOpacity: Double = 0.5
+    /// And how much quieter: rings, glyphs, numbers and bars. The handles go
+    /// further and fold away altogether.
+    static let restingOpacity: Double = 0.65
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.
     @Published var edge: NotchEdge = .right

@@ -13,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updater: Updater?
     /// Held for the life of the app: it owns the power assertion.
     private var keepAwake: KeepAwake?
+    /// The notes beside the notch when an agent finishes or needs you.
+    private var noticeCenter: SessionNoticeCenter?
+    private var notices: NoticeWindowController?
     private var statusItem: StatusItemController?
     private var cancellables = Set<AnyCancellable>()
 
@@ -198,6 +201,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 store?.refreshIfStale(providerID: id, olderThan: 2 * 60)
             }
             controller.onFocusSession = { SessionFocus.focus($0) }
+
+            // A note beside the notch when an agent finishes or stops to
+            // wait: its name and the start of what it last said. Its own
+            // panel, so it shows whether the notch is open, folded or hidden.
+            let noticeCenter = SessionNoticeCenter()
+            let notices = NoticeWindowController(center: noticeCenter)
+            notices.anchor = { [weak controller] in
+                (controller?.currentScreen ?? NSScreen.main,
+                 controller?.model.edge ?? .right,
+                 controller?.noticeInset ?? 0)
+            }
+            notices.open = { [weak noticeCenter] notice in
+                SessionFocus.focus(notice.session)
+                noticeCenter?.dismiss(notice.id)
+            }
+            self.noticeCenter = noticeCenter
+            self.notices = notices
+            controller.model.$sessions
+                .receive(on: RunLoop.main)
+                .sink { [weak noticeCenter] in noticeCenter?.observe($0) }
+                .store(in: &cancellables)
+            preferences.$noticesEnabled
+                .sink { [weak noticeCenter] in noticeCenter?.enabled = $0 }
+                .store(in: &cancellables)
+            preferences.$noticeSeconds
+                .sink { [weak notices] in notices?.lifetime = $0 }
+                .store(in: &cancellables)
             controller.rememberedPin = preferences.notchPinned
             controller.onPinChanged = { preferences.notchPinned = $0 }
             preferences.$hideInFullscreen

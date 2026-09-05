@@ -95,6 +95,18 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
     }
 
+    /// A note beside the notch when an agent finishes or needs you.
+    @Published var noticesEnabled: Bool {
+        didSet { defaults.set(noticesEnabled, forKey: Keys.notices) }
+    }
+
+    /// How long it stays, unless the pointer is on it.
+    @Published var noticeSeconds: Double {
+        didSet { defaults.set(noticeSeconds, forKey: Keys.noticeSeconds) }
+    }
+
+    static let noticeSecondsRange: ClosedRange<Double> = 4...60
+
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != Self.isRegisteredForLogin else { return }
@@ -128,6 +140,8 @@ final class Preferences: ObservableObject {
         static let notchScale = "notchScale"
         static let hideInFullscreen = "hideInFullscreen"
         static let notchPinned = "notchPinned"
+        static let notices = "noticesEnabled"
+        static let noticeSeconds = "noticeSeconds"
     }
 
     /// True the very first time this copy runs, and never again.
@@ -209,6 +223,10 @@ final class Preferences: ObservableObject {
         // a reading on the screen's edge. Absent means never chosen.
         self.hideInFullscreen = defaults.object(forKey: Keys.hideInFullscreen) as? Bool ?? true
         self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
+        self.noticesEnabled = defaults.object(forKey: Keys.notices) as? Bool ?? true
+        let seconds = defaults.object(forKey: Keys.noticeSeconds) as? Double ?? 12
+        self.noticeSeconds = min(max(seconds, Self.noticeSecondsRange.lowerBound),
+                                 Self.noticeSecondsRange.upperBound)
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin

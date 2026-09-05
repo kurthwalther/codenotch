@@ -52,7 +52,7 @@ final class NotchWindowController {
     /// else last asked for attention. Under Always show, ten quiet seconds
     /// after this the notch draws smaller and quieter.
     private var lastAttention = Date()
-    private var waitingBefore: Set<String> = []
+    private var statesBefore: [String: AgentSession.State] = [:]
     static let restAfter: TimeInterval = 10
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
@@ -106,7 +106,7 @@ final class NotchWindowController {
 
         model.$sessions
             .sink { [weak self] sessions in
-                MainActor.assumeIsolated { self?.noticeWaiting(sessions) }
+                MainActor.assumeIsolated { self?.noticeActivity(sessions) }
             }
             .store(in: &cancellables)
 
@@ -135,6 +135,18 @@ final class NotchWindowController {
     }
 
     // MARK: - Placement
+
+    /// Where a note beside the notch should start, measured in from the
+    /// bezel: just past the body and its tail gap while the notch is open,
+    /// just past the pill when it is folded or gone.
+    var noticeInset: CGFloat {
+        let body = model.isExpanded
+            ? model.contentInset + NotchLayout.bodyDepth(for: model.edge)
+            : model.restingDepth
+        return body + NotchLayout.tailGap
+    }
+
+    var currentScreen: NSScreen? { panel?.screen }
 
     /// The notch's size, from Settings. Everything measured through
     /// `Design.npx` follows, so the panel is re-placed and the views re-read.
@@ -182,12 +194,18 @@ final class NotchWindowController {
         checkResting()
     }
 
-    /// An agent that has just started waiting on you lifts the notch's head
-    /// for a moment, the way a colleague clears their throat.
-    private func noticeWaiting(_ sessions: [String: [AgentSession]]) {
-        let waiting = Set(sessions.values.flatMap { $0 }.filter { $0.state == .waiting }.map(\.id))
-        defer { waitingBefore = waiting }
-        guard !waiting.subtracting(waitingBefore).isEmpty else { return }
+    /// A change in what any agent is doing — starting to work, finishing,
+    /// starting to wait on you — lifts the notch's head for a moment, the way
+    /// a colleague clears their throat.
+    private func noticeActivity(_ sessions: [String: [AgentSession]]) {
+        var states: [String: AgentSession.State] = [:]
+        for session in sessions.values.flatMap({ $0 }) { states[session.id] = session.state }
+        defer { statesBefore = states }
+        let changed = states.contains { id, state in
+            guard let before = statesBefore[id] else { return state != .idle }
+            return before != state
+        }
+        guard changed else { return }
         wake()
     }
 

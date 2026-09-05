@@ -30,14 +30,16 @@ struct NotchRootView: View {
                                     arcOffset: model.orbArcOffset,
                                     scale: Design.notchFactor)
                         .position(orbCentre(place))
-                        // Outward, into the black — not inward to nothing.
-                        .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
+                        // Outward, into the black — not inward to nothing. At
+                        // rest the handles take the same way out: a notch left
+                        // alone shows its readings and nothing to press.
+                        .scaleEffect(handlesShown ? 1 : model.orbMergeScale)
                         // Full strength the whole way in. The arc is buried in
                         // the notch before this reaches zero, so the fade is
                         // only there to guarantee nothing is left on screen
                         // once the notch has folded — it is never what the eye
                         // sees the arc leave by.
-                        .opacity(model.isExpanded ? 1 : 0)
+                        .opacity(handlesShown ? 1 : 0)
                         .animation(motion(orbMotion), value: model.isExpanded)
                 }
 
@@ -58,8 +60,8 @@ struct NotchRootView: View {
                                 detail: model.awakeDetail,
                                 scale: Design.notchFactor)
                         .position(awakeCentre(place))
-                        .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
-                        .opacity(model.isExpanded ? 1 : 0)
+                        .scaleEffect(handlesShown ? 1 : model.orbMergeScale)
+                        .opacity(handlesShown ? 1 : 0)
                         .animation(motion(awakeMotion), value: model.isExpanded)
                 }
                 }
@@ -92,6 +94,9 @@ struct NotchRootView: View {
         }
         .animation(motion(NotchMotion.unfold), value: model.isExpanded)
     }
+
+    /// The handles are out while the notch is open and being looked at.
+    private var handlesShown: Bool { model.isExpanded && !model.isResting }
 
     /// The resting treatment: smaller about the bezel's midpoint, and the
     /// contents — never the black body, which is the silhouette — quieter.

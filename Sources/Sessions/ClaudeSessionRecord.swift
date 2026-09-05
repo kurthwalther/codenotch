@@ -46,7 +46,8 @@ struct ClaudeSessionRecord {
             waitingFor: (json["waitingFor"] as? String) ?? (json["needs"] as? String),
             since: millis.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(),
             locator: SessionLocator(pid: pid, cwd: cwd,
-                                    entrypoint: json["entrypoint"] as? String)
+                                    entrypoint: json["entrypoint"] as? String,
+                                    transcriptID: json["sessionId"] as? String)
         )
     }
 

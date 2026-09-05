@@ -38,4 +38,6 @@ struct SessionLocator: Equatable {
     /// "claude-vscode", "claude-desktop"…
     var entrypoint: String? = nil
     var appBundleID: String? = nil
+    /// The id under which Claude Code keeps the session's transcript.
+    var transcriptID: String? = nil
 }
