@@ -130,22 +130,23 @@ private struct ActivityArc: View {
     let summary: ActivitySummary
     /// See `ProviderRing.scale`.
     var scale: CGFloat = Design.notchFactor
-    /// At rest the arc stands still: it is already faded to a whisper, and
-    /// a spinner nobody is looking at is the one thing here that costs a
-    /// steady share of a core.
+    /// At rest the arc keeps turning, but slowly and at a third of the
+    /// frames: a sign of life at a cost too small to measure.
     var isResting: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// How much of the circle the moving arc covers.
     private let arcFraction: CGFloat = 0.25
-    /// One turn, and one breath, in seconds.
+    /// One turn, and one breath, in seconds — and at rest, a slower turn.
     private static let turn: Double = 1.1
+    private static let restingTurn: Double = 3.0
     private static let breath: Double = 1.8
     /// Frames a second. Thirty is smooth to the eye; the display's own 120
     /// would have SwiftUI re-evaluating the panel four times as often for
-    /// nothing anyone could see.
+    /// nothing anyone could see. At rest, ten.
     private static let frame: Double = 1.0 / 30
+    private static let restingFrame: Double = 1.0 / 10
 
     private var stroke: CGFloat { NotchLayout.activityStroke }
     private var inset: CGFloat {
@@ -174,22 +175,23 @@ private struct ActivityArc: View {
     }
 
     /// Driven by the clock rather than by an endless animation: the angle is
-    /// a function of the time, drawn thirty times a second, and nothing has
-    /// to be cancelled to stop — at rest, or with motion reduced, it is
-    /// simply drawn once.
+    /// a function of the time, drawn thirty times a second — ten, and a
+    /// slower turn, at rest — and nothing has to be cancelled to stop: with
+    /// motion reduced it is simply drawn once.
     @ViewBuilder
     private var spinner: some View {
-        if reduceMotion || isResting {
+        if reduceMotion {
             arc.rotationEffect(.degrees(-90))
         } else {
-            TimelineView(.animation(minimumInterval: Self.frame)) { context in
-                arc.rotationEffect(.degrees(Self.angle(at: context.date)))
+            TimelineView(.animation(minimumInterval: isResting ? Self.restingFrame : Self.frame)) { context in
+                arc.rotationEffect(.degrees(Self.angle(at: context.date, resting: isResting)))
             }
         }
     }
 
-    static func angle(at date: Date) -> Double {
-        (date.timeIntervalSinceReferenceDate / turn).truncatingRemainder(dividingBy: 1) * 360
+    static func angle(at date: Date, resting: Bool = false) -> Double {
+        let period = resting ? restingTurn : turn
+        return (date.timeIntervalSinceReferenceDate / period).truncatingRemainder(dividingBy: 1) * 360
     }
 
     private var ring: some View {

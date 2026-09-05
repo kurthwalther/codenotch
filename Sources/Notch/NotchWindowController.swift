@@ -55,6 +55,12 @@ final class NotchWindowController {
     /// else last asked for attention. Under Always show, ten quiet seconds
     /// after this the notch draws smaller and quieter.
     private var lastAttention = Date()
+    /// Until when a wake keeps the notch up regardless of the delay. A
+    /// notch woken by an agent — not by the pointer — has to stay up long
+    /// enough to be seen: with the delay at zero it would otherwise rest
+    /// again in the same tick.
+    private var holdUntil = Date.distantPast
+    static let headLift: TimeInterval = 6
     private var statesBefore: [String: AgentSession.State] = [:]
     /// How long a notch held open is left alone before it settles, from
     /// Settings.
@@ -200,7 +206,8 @@ final class NotchWindowController {
         // last touch" would otherwise be true the instant after waking.
         let attended = model.isPointerOn || attentionElsewhere()
         let shouldRest = model.isAlwaysOn && model.isExpanded && !hiddenForFullscreen
-            && !attended && now.timeIntervalSince(lastAttention) >= restAfter
+            && Self.restIsDue(now: now, lastAttention: lastAttention, holdUntil: holdUntil,
+                              restAfter: restAfter, attended: attended)
         guard shouldRest != model.isResting else { return }
         if shouldRest {
             withAnimation(.easeInOut(duration: 0.6)) { model.isResting = true }
@@ -209,11 +216,21 @@ final class NotchWindowController {
         }
     }
 
+    /// Whether a notch held open should settle: left alone past the delay,
+    /// with no pointer or note on it, and not inside a wake's hold.
+    static func restIsDue(now: Date, lastAttention: Date, holdUntil: Date,
+                          restAfter: TimeInterval, attended: Bool) -> Bool {
+        !attended && now >= holdUntil && now.timeIntervalSince(lastAttention) >= restAfter
+    }
+
     /// Something worth looking at: the notch comes back to full size and
-    /// stays there for another quiet spell.
+    /// stays there for another quiet spell — at least `headLift`, however
+    /// short the delay is set.
     func wake() {
-        lastAttention = Date()
-        checkResting()
+        let now = Date()
+        lastAttention = now
+        holdUntil = now.addingTimeInterval(max(restAfter, Self.headLift))
+        checkResting(now: now)
     }
 
     /// A change in what any agent is doing — starting to work, finishing,

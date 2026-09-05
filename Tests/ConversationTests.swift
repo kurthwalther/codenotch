@@ -305,3 +305,32 @@ final class ProviderIconTests: XCTestCase {
         XCTAssertNil(Preferences(defaults: defaults).icon(for: "claude"))
     }
 }
+
+/// When a notch held open settles.
+@MainActor
+final class RestIsDueTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+
+    func testAtZeroItRestsTheMomentThePointerLeaves() {
+        XCTAssertTrue(NotchWindowController.restIsDue(now: t0, lastAttention: t0, holdUntil: .distantPast,
+                                                       restAfter: 0, attended: false))
+        XCTAssertFalse(NotchWindowController.restIsDue(now: t0, lastAttention: t0, holdUntil: .distantPast,
+                                                        restAfter: 0, attended: true))
+    }
+
+    /// A wake by an agent holds the notch up even at a delay of zero.
+    func testAWakeHoldsTheNotchUpWhateverTheDelay() {
+        let hold = t0.addingTimeInterval(NotchWindowController.headLift)
+        XCTAssertFalse(NotchWindowController.restIsDue(now: t0.addingTimeInterval(1), lastAttention: t0,
+                                                        holdUntil: hold, restAfter: 0, attended: false))
+        XCTAssertTrue(NotchWindowController.restIsDue(now: hold, lastAttention: t0,
+                                                       holdUntil: hold, restAfter: 0, attended: false))
+    }
+
+    func testTheDelayStillCounts() {
+        XCTAssertFalse(NotchWindowController.restIsDue(now: t0.addingTimeInterval(5), lastAttention: t0,
+                                                        holdUntil: .distantPast, restAfter: 10, attended: false))
+        XCTAssertTrue(NotchWindowController.restIsDue(now: t0.addingTimeInterval(10), lastAttention: t0,
+                                                       holdUntil: .distantPast, restAfter: 10, attended: false))
+    }
+}
