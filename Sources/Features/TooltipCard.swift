@@ -1,33 +1,101 @@
 import SwiftUI
 
 /// The speech-bubble tail, its point aimed at the hovered cell.
-private struct TooltipTail: Shape {
+///
+/// Not a triangle. The notch meets the bezel with inverse-rounded flares, and
+/// a tail with two straight edges and a sharp point read as a different object
+/// bolted onto the card. This one leaves the card's edge *tangentially* — the
+/// same fillet the notch's flares make — and its two edges sweep in to a small
+/// rounded tip, so card and tail read as one silhouette pinched out toward the
+/// ring rather than a card with an arrow stuck on it.
+///
+/// Written once, for a tail pointing right, and turned onto the other three
+/// directions — the same arrangement `SideNotchShape` uses.
+struct TooltipTail: Shape {
     /// Which way the card sits relative to the notch — the tip points back the
     /// other way, at the cell.
     let direction: NotchEdge.TooltipDirection
 
+    /// Rounding at the point. Enough to be soft, not so much that it stops
+    /// pointing.
+    static let tipRadius = Design.px(12)
+    /// How far each edge keeps hugging the card before it turns toward the
+    /// tip, as a share of the distance it has to cover. Higher is a longer,
+    /// thinner neck — at 0.4 the tail was a thorn; lower is closer to the
+    /// straight triangle this replaced. This is a full tail whose sides
+    /// visibly bow in and whose base melts into the card.
+    static let flare: CGFloat = 0.25
+    /// Cubic control distance that best approximates a quarter circle.
+    private static let kappa: CGFloat = 0.5523
+
     func path(in rect: CGRect) -> Path {
-        // The tip, and the two corners of the base opposite it.
-        let (tip, a, b): (CGPoint, CGPoint, CGPoint)
+        // Canonical: `u` along the tail from the card (0) to the tip, `v`
+        // across it. A side card's rect already reads that way; a card above
+        // or below has the rect turned on its side.
+        let (length, breadth): (CGFloat, CGFloat)
         switch direction {
-        case .leading:   // card on the left, tip to the right
-            tip = CGPoint(x: rect.maxX, y: rect.midY)
-            (a, b) = (CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.minX, y: rect.maxY))
-        case .trailing:  // card on the right, tip to the left
-            tip = CGPoint(x: rect.minX, y: rect.midY)
-            (a, b) = (CGPoint(x: rect.maxX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.maxY))
-        case .down:      // card below, tip upward
-            tip = CGPoint(x: rect.midX, y: rect.minY)
-            (a, b) = (CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY))
-        case .up:        // card above, tip downward
-            tip = CGPoint(x: rect.midX, y: rect.maxY)
-            (a, b) = (CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY))
+        case .leading, .trailing: (length, breadth) = (rect.width, rect.height)
+        case .up, .down:          (length, breadth) = (rect.height, rect.width)
         }
+        return Self.canonicalPath(length: length, breadth: breadth)
+            .applying(Self.transform(for: direction, length: length))
+            .applying(CGAffineTransform(translationX: rect.minX, y: rect.minY))
+    }
+
+    /// Canonical (`u` along, `v` across) onto the rect's own axes, with the tip
+    /// landing on the side the direction names and the base on the card's.
+    static func transform(for direction: NotchEdge.TooltipDirection,
+                          length: CGFloat) -> CGAffineTransform {
+        switch direction {
+        case .leading:
+            // Tip to the right, as written.
+            return .identity
+        case .trailing:
+            // Mirrored: tip to the left.
+            return CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: length, ty: 0)
+        case .down:
+            // Quarter turn, tip upward, base against the card below.
+            return CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: length)
+        case .up:
+            // Quarter turn the other way, tip downward.
+            return CGAffineTransform(a: 0, b: 1, c: 1, d: 0, tx: 0, ty: 0)
+        }
+    }
+
+    /// The tail pointing right: base along `u == 0`, tip at `(length, breadth/2)`.
+    static func canonicalPath(length: CGFloat, breadth: CGFloat) -> Path {
+        let h = breadth / 2
+        let r = min(tipRadius, h, length / 2)
+        // Where the two edges hand over to the tip's cap.
+        let neck = length - r
+        let k = kappa * r
 
         var path = Path()
-        path.move(to: a)
-        path.addLine(to: tip)
-        path.addLine(to: b)
+        path.move(to: CGPoint(x: 0, y: 0))
+        // Upper edge: leaves the card heading straight along it, arrives at the
+        // cap heading for the tip, and sweeps concavely between the two.
+        path.addCurve(
+            to: CGPoint(x: neck, y: h - r),
+            control1: CGPoint(x: 0, y: flare * (h - r)),
+            control2: CGPoint(x: neck * (1 - flare), y: h - r)
+        )
+        // The cap: two quarter circles around the tip's centre.
+        path.addCurve(
+            to: CGPoint(x: length, y: h),
+            control1: CGPoint(x: neck + k, y: h - r),
+            control2: CGPoint(x: length, y: h - k)
+        )
+        path.addCurve(
+            to: CGPoint(x: neck, y: h + r),
+            control1: CGPoint(x: length, y: h + k),
+            control2: CGPoint(x: neck + k, y: h + r)
+        )
+        // Lower edge, the mirror of the upper one.
+        path.addCurve(
+            to: CGPoint(x: 0, y: breadth),
+            control1: CGPoint(x: neck * (1 - flare), y: h + r),
+            control2: CGPoint(x: 0, y: breadth - flare * (h - r))
+        )
         path.closeSubpath()
         return path
     }
