@@ -45,7 +45,10 @@ struct NotchRootView: View {
                                 arcOffset: model.awakeArcOffset,
                                 symbol: model.awakeSymbol,
                                 atStart: true,
-                                spin: 0)
+                                spin: 0,
+                                tint: model.awakeTint,
+                                dim: model.awakeDim,
+                                caption: model.awakeCaption)
                         .position(awakeCentre(place))
                         .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
                         .opacity(model.isExpanded ? 1 : 0)
@@ -127,7 +130,8 @@ struct NotchRootView: View {
             ProviderCell(
                 snapshot: snapshot,
                 activity: model.activity(for: snapshot.id),
-                isRefreshing: model.refreshing.contains(snapshot.id)
+                isRefreshing: model.refreshing.contains(snapshot.id),
+                secondaryStyle: model.secondaryStyle
             )
                 // Pinned to what the cell claims along the stack, or the drawn
                 // rings stop lining up with the centres `ringCenter` hands to

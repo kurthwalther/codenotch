@@ -33,6 +33,13 @@ struct SettingsOrb: View {
     /// How far the glyph turns as it arrives. A gear turning in reads as a
     /// gear; a cup is simply set down.
     var spin: Double = -60
+    /// The glyph's colour: white for the gear, green or grey for the cup.
+    var tint: Color = Palette.textPrimary
+    /// Faded, for "switched on but with nothing to do right now".
+    var dim: Bool = false
+    /// A word or two beside the disc on hover, in its own small black pill,
+    /// on the side away from the bezel. What the cup means, said outright.
+    var caption: String? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -83,6 +90,16 @@ struct SettingsOrb: View {
         Self.restingTrim(for: edge, convex: convex, atStart: atStart)
     }
 
+    /// The side of the disc away from the bezel, where the caption goes.
+    private var captionAlignment: Alignment {
+        switch edge {
+        case .right:  return .leading
+        case .left:   return .trailing
+        case .top:    return .bottom
+        case .bottom: return .top
+        }
+    }
+
 
 
     var body: some View {
@@ -107,8 +124,8 @@ struct SettingsOrb: View {
 
             Image(systemName: symbol)
                 .font(.system(size: NotchLayout.orbGlyph, weight: .regular))
-                .foregroundStyle(Palette.textPrimary)
-                .opacity(isHovered ? 1 : 0)
+                .foregroundStyle(tint)
+                .opacity(isHovered ? (dim ? 0.55 : 1) : 0)
                 .scaleEffect(isHovered ? 1 : 0.5)
                 .rotationEffect(.degrees(isHovered ? 0 : spin))
                 // A swapped glyph fades rather than snapping — the cup
@@ -120,6 +137,36 @@ struct SettingsOrb: View {
         // corner the button hangs from.
         .frame(width: arcRadius * 2 + NotchLayout.orbStroke,
                height: arcRadius * 2 + NotchLayout.orbStroke)
+        .overlay(alignment: captionAlignment) {
+            if let caption {
+                Text(caption)
+                    .font(Typography.orbCaption)
+                    .foregroundStyle(Palette.textPrimary)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, NotchLayout.orbCaptionPadding)
+                    .padding(.vertical, NotchLayout.orbCaptionPadding * 0.5)
+                    .background(Capsule().fill(Palette.notch))
+                    // Hung entirely off the inward side of the frame, a gap
+                    // clear of it, whichever way the edge faces.
+                    .alignmentGuide(captionAlignment.horizontal) { d in
+                        switch edge {
+                        case .right: return d[.trailing] + NotchLayout.orbCaptionGap
+                        case .left:  return d[.leading] - NotchLayout.orbCaptionGap
+                        default:     return d[HorizontalAlignment.center]
+                        }
+                    }
+                    .alignmentGuide(captionAlignment.vertical) { d in
+                        switch edge {
+                        case .top:    return d[.top] - NotchLayout.orbCaptionGap
+                        case .bottom: return d[.bottom] + NotchLayout.orbCaptionGap
+                        default:      return d[VerticalAlignment.center]
+                        }
+                    }
+                    .opacity(isHovered ? 1 : 0)
+                    .scaleEffect(isHovered ? 1 : 0.85)
+            }
+        }
         .animation(
             NotchMotion.respectingReduceMotion(
                 .spring(response: 0.36, dampingFraction: 0.7), reduceMotion

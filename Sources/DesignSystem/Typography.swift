@@ -4,7 +4,15 @@ import SwiftUI
 /// track `Design.scale` along with everything else.
 enum Typography {
     /// The percent under each provider ring. Cap height 27px in the frame.
-    static let percent = Font.system(size: Design.fontSize(capPixels: 27), weight: .semibold)
+    /// Computed, not stored: it follows the notch's own scale.
+    static var percent: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 27), weight: .semibold)
+    }
+
+    /// The word beside the keep-awake handle. Small and on the notch's scale.
+    static var orbCaption: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 16), weight: .medium)
+    }
 
     /// "Claude Usage". Cap height 26px.
     static let cardTitle = Font.system(size: Design.fontSize(capPixels: 26), weight: .semibold)

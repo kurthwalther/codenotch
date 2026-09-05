@@ -6,7 +6,7 @@ enum NotchLayout {
     // The notch body
     /// The depth the design frame fixes: a 44pt ring with an even margin
     /// either side of it.
-    static let sideBodyDepth = Design.px(186)
+    static var sideBodyDepth: CGFloat { Design.npx(186) }
 
     /// How deep the notch is, which is **not** the same on every edge.
     ///
@@ -28,38 +28,38 @@ enum NotchLayout {
     /// the ring rather than beside it, but it is the same distance.
     static func ringMargin(for edge: NotchEdge) -> CGFloat { sideRingMargin }
 
-    static let curlRadius   = Design.px(103)
+    static var curlRadius: CGFloat { Design.npx(103) }
     /// The small inverse corner where a flush bar meets the screen's frame.
     ///
     /// The hardware notch is moulded into the bezel rather than cut out of it,
     /// and a bar that meets the frame with a raw square edge does not read that
     /// way. Deliberately a fraction of `curlRadius`: enough to round the join,
     /// nowhere near enough to taper the bar the way a full flare would.
-    static let bezelFillet  = Design.px(28)
-    static let cornerRadius = Design.px(78.8)
-    static let padTop       = Design.px(69.5)   // body top -> first ring
-    static let padBottom    = Design.px(50.1)   // last label -> body bottom
-    static let cellSpacing  = Design.px(83.5)   // label bottom -> next ring top
+    static var bezelFillet: CGFloat { Design.npx(28) }
+    static var cornerRadius: CGFloat { Design.npx(78.8) }
+    static var padTop: CGFloat { Design.npx(69.5) }   // body top -> first ring
+    static var padBottom: CGFloat { Design.npx(50.1) }   // last label -> body bottom
+    static var cellSpacing: CGFloat { Design.npx(83.5) }   // label bottom -> next ring top
 
     // The resting pill. Not in the design frame — it is the notch folded away,
     // sized to read as a deliberate handle rather than a sliver of chrome.
-    static let pillWidth  = Design.px(26)
-    static let pillHeight = Design.px(210)
+    static var pillWidth: CGFloat { Design.npx(26) }
+    static var pillHeight: CGFloat { Design.npx(210) }
     /// The pill is small, so the region that wakes it is deliberately larger.
-    static let pillHotZone = Design.px(90)
+    static var pillHotZone: CGFloat { Design.npx(90) }
 
     // A provider cell
-    static let ringDiameter  = Design.px(117)   // 44pt, the design spec's anchor
-    static let trackStroke   = Design.px(15.5)
-    static let progressStroke = Design.px(8)
-    static let glyphSize     = Design.px(46)
-    static let ringLabelGap  = Design.px(26.9)
+    static var ringDiameter: CGFloat { Design.npx(117) }   // 44pt, the design spec's anchor
+    static var trackStroke: CGFloat { Design.npx(15.5) }
+    static var progressStroke: CGFloat { Design.npx(8) }
+    static var glyphSize: CGFloat { Design.npx(46) }
+    static var ringLabelGap: CGFloat { Design.npx(26.9) }
 
     // The activity indicator. Not in the design frame — sized to sit in the gap
     // between the glyph (46px across) and the inside edge of the track (86px),
     // so it never crowds either.
-    static let activityDiameter = Design.px(72)
-    static let activityStroke   = Design.px(5.5)
+    static var activityDiameter: CGFloat { Design.npx(72) }
+    static var activityStroke: CGFloat { Design.npx(5.5) }
 
     // The settings orb: it lives *below* the notch, not inside it. At rest only
     // an arc of its edge is drawn, tucked into the corner the bottom flare
@@ -77,10 +77,10 @@ enum NotchLayout {
     //   flare : centre (edge - curlRadius, shapeBottom)   radius 38.5pt
     //   arc   : same centre                                radius 28.5pt
     //   disc  : same centre                                diameter 46.5pt
-    static let orbDiameter = Design.px(124)
-    static let orbStroke   = Design.px(18)
+    static var orbDiameter: CGFloat { Design.npx(124) }
+    static var orbStroke: CGFloat { Design.npx(18) }
     /// Distance from the flare's curve in to the resting arc.
-    static let orbGap      = Design.px(27)
+    static var orbGap: CGFloat { Design.npx(27) }
     /// Radius of the resting arc: the flare's radius, less the gap.
     static var orbArcRadius: CGFloat { curlRadius - orbGap }
     /// The resting arc's circle when it traces a *convex* corner: outside the
@@ -100,7 +100,7 @@ enum NotchLayout {
     static func orbCornerOffset(corner: CGFloat) -> CGFloat {
         (corner + orbGap + orbDiameter / 2) / 2.0.squareRoot()
     }
-    static let orbGlyph    = Design.px(56)
+    static var orbGlyph: CGFloat { Design.npx(56) }
     /// What the arc scales to as it hides.
     ///
     /// The arc is concentric with the bottom flare, `orbGap` inside it, so
@@ -114,7 +114,7 @@ enum NotchLayout {
     /// notch, which is what read as flying off.
     static var orbMergeScale: CGFloat { (curlRadius + orbStroke) / orbArcRadius }
     /// Generous, like the pill's — it is a small target on a screen edge.
-    static let orbHotZone  = Design.px(152)
+    static var orbHotZone: CGFloat { Design.npx(152) }
 
     // The hover tooltip
     static let cardWidth     = Design.px(600)
@@ -140,10 +140,29 @@ enum NotchLayout {
 
     /// The percent label's line box. Fixed rather than intrinsic so the panel
     /// geometry can be worked out in AppKit before SwiftUI lays anything out.
-    static let percentLineHeight: CGFloat = {
-        let font = NSFont.systemFont(ofSize: Design.fontSize(capPixels: 27), weight: .semibold)
-        return ceil(font.ascender - font.descender + font.leading)
-    }()
+    static var percentLineHeight: CGFloat {
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 27), weight: .semibold))
+    }
+
+    // A second window in the same cell. Three ways, chosen in Settings.
+    /// A ring inside the main one, Activity-rings style.
+    static var innerRingDiameter: CGFloat { Design.npx(82) }
+    static var innerRingStroke: CGFloat { Design.npx(7) }
+    /// The glyph and the activity arc make room for it.
+    static var compactGlyphSize: CGFloat { Design.npx(36) }
+    static var compactActivityDiameter: CGFloat { Design.npx(56) }
+    static var compactActivityStroke: CGFloat { Design.npx(4.5) }
+    /// A miniature bar between the ring and the percentage.
+    static var secondaryBarWidth: CGFloat { Design.npx(70) }
+    static var secondaryBarHeight: CGFloat { Design.npx(7) }
+    /// Whether every cell reserves room for that bar. Set alongside the style
+    /// so the stack stays uniform: cells with and without a second window
+    /// keep the same pitch, and the hover bands keep lining up with the rings.
+    nonisolated(unsafe) static var reservesSecondaryBar = false
+    static var secondaryBarSpace: CGFloat { reservesSecondaryBar ? secondaryBarHeight : 0 }
+    /// The gap between the caption and the keep-awake handle, and inside it.
+    static var orbCaptionGap: CGFloat { Design.npx(14) }
+    static var orbCaptionPadding: CGFloat { Design.npx(16) }
 
     static let cardTitleLineHeight: CGFloat = lineHeight(
         NSFont.systemFont(ofSize: Design.fontSize(capPixels: 26), weight: .semibold)
@@ -186,8 +205,11 @@ enum NotchLayout {
         ceil(font.ascender - font.descender + font.leading)
     }
 
-    /// Ring plus its percent label.
-    static var cellExtent: CGFloat { ringDiameter + ringLabelGap + percentLineHeight }
+    /// Ring plus its percent label — and the bar between them, when every
+    /// cell is holding room for one.
+    static var cellExtent: CGFloat {
+        ringDiameter + ringLabelGap + percentLineHeight + secondaryBarSpace
+    }
 
     /// What one cell claims along the stack.
     ///

@@ -27,8 +27,11 @@ final class NotchWindowController {
     var onToggleKeepAwake: (() -> Void)?
     /// Point a provider's ring at one of its windows, chosen from the menu.
     var onChooseRingWindow: ((_ providerID: String, _ windowID: String) -> Void)?
+    /// Give a provider a second window, or none, chosen from the menu.
+    var onChooseSecondaryWindow: ((_ providerID: String, _ windowID: String?) -> Void)?
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
+    private var secondaryChoices: [(providerID: String, windowID: String?)] = []
 
     private var panel: NotchPanel?
     private var hostingView: NotchHostingView<NotchRootView>?
@@ -101,6 +104,27 @@ final class NotchWindowController {
     }
 
     // MARK: - Placement
+
+    /// The notch's size, from Settings. Everything measured through
+    /// `Design.npx` follows, so the panel is re-placed and the views re-read.
+    func apply(scale: Double) {
+        Design.notchFactor = CGFloat(scale)
+        relayout()
+    }
+
+    /// How a second window is drawn. The bar is the one style that changes
+    /// the cell's height, and it does so for every cell at once.
+    func apply(secondaryStyle: SecondaryStyle) {
+        NotchLayout.reservesSecondaryBar = secondaryStyle == .bar
+        model.secondaryStyle = secondaryStyle
+        relayout()
+    }
+
+    private func relayout() {
+        model.layoutVersion += 1
+        guard panel != nil else { return }
+        relocate()
+    }
 
     func relocate(cellCount: Int? = nil) {
         guard let screen = NotchGeometry.preferredScreen(from: NSScreen.screens) else { return }
@@ -619,6 +643,38 @@ final class NotchWindowController {
             menu.addItem(parent)
         }
         ringChoices = choices
+
+        // And a second window beside it, or none. The ring's own window is
+        // left off the list: it cannot be both.
+        var seconds: [(providerID: String, windowID: String?)] = []
+        for snapshot in model.snapshots where snapshot.windows.count > 1 {
+            let submenu = NSMenu()
+            let none = NSMenuItem(title: "None", action: #selector(MenuActions.chooseSecondary(_:)),
+                                  keyEquivalent: "")
+            none.target = menuActions
+            none.tag = seconds.count
+            none.isEnabled = true
+            none.state = snapshot.secondary == nil ? .on : .off
+            seconds.append((snapshot.id, nil))
+            submenu.addItem(none)
+            for window in snapshot.windows where window.id != snapshot.headline?.id {
+                let item = NSMenuItem(title: window.label,
+                                      action: #selector(MenuActions.chooseSecondary(_:)),
+                                      keyEquivalent: "")
+                item.target = menuActions
+                item.tag = seconds.count
+                item.isEnabled = true
+                item.state = window.id == snapshot.secondary?.id ? .on : .off
+                seconds.append((snapshot.id, window.id))
+                submenu.addItem(item)
+            }
+            let parent = NSMenuItem(title: "\(snapshot.displayName) second window",
+                                    action: nil, keyEquivalent: "")
+            parent.isEnabled = true
+            parent.submenu = submenu
+            menu.addItem(parent)
+        }
+        secondaryChoices = seconds
         if !choices.isEmpty { menu.addItem(.separator()) }
 
         let refresh = NSMenuItem(
@@ -657,6 +713,10 @@ final class NotchWindowController {
         chooseRing: { [weak self] index in
             guard let self, let choice = self.ringChoices[safe: index] else { return }
             self.onChooseRingWindow?(choice.providerID, choice.windowID)
+        },
+        chooseSecondary: { [weak self] index in
+            guard let self, let choice = self.secondaryChoices[safe: index] else { return }
+            self.onChooseSecondaryWindow?(choice.providerID, choice.windowID)
         }
     )
 }
@@ -669,17 +729,20 @@ final class MenuActions: NSObject {
     private let signIn: (Int) -> Void
     private let pin: () -> Void
     private let chooseRing: (Int) -> Void
+    private let chooseSecondary: (Int) -> Void
 
     init(
         refresh: @escaping () -> Void,
         signIn: @escaping (Int) -> Void,
         togglePinned: @escaping () -> Void,
-        chooseRing: @escaping (Int) -> Void
+        chooseRing: @escaping (Int) -> Void,
+        chooseSecondary: @escaping (Int) -> Void
     ) {
         self.refresh = refresh
         self.signIn = signIn
         self.pin = togglePinned
         self.chooseRing = chooseRing
+        self.chooseSecondary = chooseSecondary
     }
 
     @objc func refreshNow(_ sender: Any?) { refresh() }
@@ -693,6 +756,11 @@ final class MenuActions: NSObject {
     @objc func chooseRing(_ sender: Any?) {
         guard let item = sender as? NSMenuItem else { return }
         chooseRing(item.tag)
+    }
+
+    @objc func chooseSecondary(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem else { return }
+        chooseSecondary(item.tag)
     }
 }
 

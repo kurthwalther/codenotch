@@ -197,8 +197,9 @@ private struct SplitRow<Accessory: View>: View {
     let trailing: String
     var leadingColor: Color = Palette.textPrimary
     var trailingColor: Color = Palette.textSecondary
-    /// A small ring before the label, saying "this is the one the ring draws".
-    var leadingMark: Bool = false
+    /// A mark before the label: which window the ring draws, and which the
+    /// second gauge does.
+    var leadingMark: RowMark = .none
     /// Sits immediately before the trailing text, inside the same group, so it
     /// travels with the word instead of drifting to the middle of the row.
     @ViewBuilder var accessory: () -> Accessory
@@ -206,7 +207,7 @@ private struct SplitRow<Accessory: View>: View {
     var body: some View {
         HStack(spacing: Design.px(20)) {
             HStack(spacing: NotchLayout.statusDotGap) {
-                if leadingMark { RingMark() }
+                if leadingMark != .none { RingMark(kind: leadingMark) }
                 Text(leading).foregroundStyle(leadingColor)
             }
             Spacer(minLength: 0)
@@ -225,23 +226,39 @@ extension SplitRow where Accessory == EmptyView {
          trailing: String,
          leadingColor: Color = Palette.textPrimary,
          trailingColor: Color = Palette.textSecondary,
-         leadingMark: Bool = false) {
+         leadingMark: RowMark = .none) {
         self.init(leading: leading, trailing: trailing,
                   leadingColor: leadingColor, trailingColor: trailingColor,
                   leadingMark: leadingMark, accessory: { EmptyView() })
     }
 }
 
+/// Which gauge a row belongs to, if any.
+enum RowMark: Equatable {
+    case none
+    /// The window the ring draws.
+    case ring
+    /// The second window, drawn inside the ring or as the small bar.
+    case secondary
+}
+
 /// The mark on the window the ring draws: a ring, with the dot of a bullseye,
-/// so it reads as "this one" rather than as another status spinner.
+/// so it reads as "this one" rather than as another status spinner. The
+/// second window gets the ring alone, thinner — the same idea, one step down.
 private struct RingMark: View {
+    let kind: RowMark
+
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Palette.textPrimary, lineWidth: NotchLayout.statusDotStroke)
-            Circle()
-                .fill(Palette.textPrimary)
-                .frame(width: NotchLayout.statusDot * 0.4, height: NotchLayout.statusDot * 0.4)
+                .stroke(kind == .ring ? Palette.textPrimary : Palette.textSecondary,
+                        lineWidth: kind == .ring ? NotchLayout.statusDotStroke
+                                                 : NotchLayout.statusDotStroke * 0.7)
+            if kind == .ring {
+                Circle()
+                    .fill(Palette.textPrimary)
+                    .frame(width: NotchLayout.statusDot * 0.4, height: NotchLayout.statusDot * 0.4)
+            }
         }
         .frame(width: NotchLayout.statusDot, height: NotchLayout.statusDot)
     }
@@ -313,8 +330,8 @@ private struct LimitWindowRow: View {
     let window: LimitWindow
     let fidelity: Fidelity
     let now: Date
-    /// This is the window the ring draws.
-    var isHeadline: Bool = false
+    /// Which gauge this window is on, if any.
+    var mark: RowMark = .none
     /// How fast it is going, when enough readings say.
     var pace: UsagePace?
 
@@ -343,7 +360,7 @@ private struct LimitWindowRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SplitRow(leading: window.label, trailing: resetText, leadingMark: isHeadline)
+            SplitRow(leading: window.label, trailing: resetText, leadingMark: mark)
 
             // No bar without a denominator — an empty track would read as "none
             // used", which is not what "we do not know the limit" means.
@@ -402,7 +419,10 @@ private struct ProviderTooltip: View {
                         window: window, fidelity: snapshot.fidelity, now: now,
                         // Only worth marking where there is more than one to
                         // tell apart.
-                        isHeadline: snapshot.windows.count > 1 && window.id == snapshot.headline?.id,
+                        mark: snapshot.windows.count > 1
+                            ? (window.id == snapshot.headline?.id ? .ring
+                               : window.id == snapshot.secondary?.id ? .secondary : .none)
+                            : .none,
                         pace: snapshot.pace[window.id]
                     )
                     .padding(.top, index == 0 ? NotchLayout.headerToBlock : NotchLayout.blockSpacing)

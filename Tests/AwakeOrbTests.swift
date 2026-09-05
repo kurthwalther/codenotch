@@ -67,13 +67,24 @@ final class AwakeOrbTests: XCTestCase {
         XCTAssertEqual(m.awakeArcOffset.height, m.orbArcOffset.height, accuracy: 0.001)
     }
 
-    func testTheSymbolSaysWhatTheHandleWillDo() {
+    /// Caffeine's convention — a full cup on, an empty one off — with the
+    /// colour saying it again and the caption spelling out the case the cup
+    /// cannot: on, but with nothing running.
+    func testTheCupAndTheCaptionSayWhatIsHappening() {
         let m = NotchViewModel()
         m.keepAwakeEnabled = false
-        XCTAssertEqual(m.awakeSymbol, "moon.zzz")
-        m.keepAwakeEnabled = true
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer")
+        XCTAssertEqual(m.awakeCaption, "Off")
+        XCTAssertFalse(m.awakeDim)
+
+        m.keepAwakeEnabled = true
+        XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
+        XCTAssertEqual(m.awakeCaption, "No agents running")
+        XCTAssertTrue(m.awakeDim, "on with nothing to hold is shown faded")
+
         m.isHoldingAwake = true
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
+        XCTAssertEqual(m.awakeCaption, "Keeping awake")
+        XCTAssertFalse(m.awakeDim)
     }
 }

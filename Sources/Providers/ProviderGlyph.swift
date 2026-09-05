@@ -70,7 +70,7 @@ struct GlyphShape: Shape {
 
 struct ProviderGlyphView: View {
     let glyph: ProviderGlyph
-    var size: CGFloat = Design.px(46)
+    var size: CGFloat = NotchLayout.glyphSize
 
     var body: some View {
         Group {

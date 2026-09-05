@@ -74,6 +74,34 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // The notch alone. The tooltip keeps the frame's size, because
+                // that is where there is text to read.
+                HStack(spacing: 10) {
+                    Text("Notch size")
+                    Slider(value: $preferences.notchScale,
+                           in: Preferences.notchScaleRange, step: 0.05)
+                    Text("\(Int((preferences.notchScale * 100).rounded()))%")
+                        .monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
+                        .foregroundStyle(.secondary)
+                }
+                Text("Rings, numbers and handles only — the card you hover for "
+                     + "keeps its size.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Picker("Second window", selection: $preferences.secondaryStyle) {
+                    ForEach(SecondaryStyle.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Text(preferences.secondaryStyle.explanation
+                     + " Choose which window, per provider, under Integrations.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 // "App icon", not "Icon": the two rows above it are about the
                 // notch, and on its own the word would read as another of them.
                 Picker("App icon", selection: $preferences.appPresence) {
@@ -189,7 +217,7 @@ struct SettingsView: View {
     static let width: CGFloat = 500
     /// Tall enough that Startup and Updates are visible without scrolling —
     /// four account rows push everything below them a long way down.
-    static let height: CGFloat = 640
+    static let height: CGFloat = 720
 
     /// Says the one thing people will try and find does not work. A power
     /// assertion is exactly what Caffeine and Amphetamine hold, and it stops
@@ -330,8 +358,43 @@ private struct AccountRow: View {
                 ringPicker
                     .font(.caption)
                     .padding(.leading, 26)
+                secondaryPicker
+                    .font(.caption)
+                    .padding(.leading, 26)
             }
         }
+    }
+
+    /// A second window to show beside the ring's, or none.
+    private var secondaryPicker: some View {
+        HStack(spacing: 8) {
+            Text("Second window")
+                .foregroundStyle(.secondary)
+            Picker("Second window", selection: secondaryBinding) {
+                Text("None").tag("")
+                ForEach(provider.windows.filter { $0.id != ringBinding.wrappedValue }) {
+                    Text($0.label).tag($0.id)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .fixedSize()
+        }
+    }
+
+    /// Empty string for none — a `Picker` wants one type of tag throughout.
+    private var secondaryBinding: Binding<String> {
+        Binding(
+            get: {
+                guard let chosen = preferences.secondaryWindow(for: provider.id),
+                      chosen != ringBinding.wrappedValue,
+                      provider.windows.contains(where: { $0.id == chosen })
+                else { return "" }
+                return chosen
+            },
+            set: { preferences.setSecondaryWindow($0.isEmpty ? nil : $0, for: provider.id) }
+        )
     }
 
     /// Which of this provider's windows the ring draws.

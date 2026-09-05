@@ -56,6 +56,25 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(ringWindows, forKey: Keys.ringWindows) }
     }
 
+    /// A second window per provider, shown beside the ring's. Absent means none.
+    @Published var secondaryWindows: [String: String] {
+        didSet { defaults.set(secondaryWindows, forKey: Keys.secondaryWindows) }
+    }
+
+    /// How that second window is drawn.
+    @Published var secondaryStyle: SecondaryStyle {
+        didSet { defaults.set(secondaryStyle.rawValue, forKey: Keys.secondaryStyle) }
+    }
+
+    /// How big the notch is, as a share of the design frame's size. The
+    /// tooltip is not affected.
+    @Published var notchScale: Double {
+        didSet { defaults.set(notchScale, forKey: Keys.notchScale) }
+    }
+
+    static let notchScaleRange: ClosedRange<Double> = 0.6...1.0
+    static let defaultNotchScale = 0.8
+
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != Self.isRegisteredForLogin else { return }
@@ -79,6 +98,9 @@ final class Preferences: ObservableObject {
         static let keepAwake = "keepAwakeWhileWorking"
         static let keepDisplay = "keepDisplayAwake"
         static let ringWindows = "ringWindows"
+        static let secondaryWindows = "secondaryWindows"
+        static let secondaryStyle = "secondaryStyle"
+        static let notchScale = "notchScale"
     }
 
     /// True the very first time this copy runs, and never again.
@@ -142,6 +164,14 @@ final class Preferences: ObservableObject {
         // The display is a separate question — the agent does not need it lit.
         self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
         self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
+        self.secondaryWindows = defaults.dictionary(forKey: Keys.secondaryWindows) as? [String: String] ?? [:]
+        self.secondaryStyle = defaults.string(forKey: Keys.secondaryStyle)
+            .flatMap(SecondaryStyle.init(rawValue:)) ?? .innerRing
+        // Smaller than the frame by default: the notch carries a ring, a
+        // glyph and a number, and at the frame's size it was more furniture
+        // than reading. Absent means never chosen.
+        let scale = defaults.object(forKey: Keys.notchScale) as? Double ?? Self.defaultNotchScale
+        self.notchScale = min(max(scale, Self.notchScaleRange.lowerBound), Self.notchScaleRange.upperBound)
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin
@@ -151,6 +181,12 @@ final class Preferences: ObservableObject {
 
     func setRingWindow(_ windowID: String?, for providerID: String) {
         ringWindows[providerID] = windowID
+    }
+
+    func secondaryWindow(for providerID: String) -> String? { secondaryWindows[providerID] }
+
+    func setSecondaryWindow(_ windowID: String?, for providerID: String) {
+        secondaryWindows[providerID] = windowID
     }
 
     func isConnected(_ providerID: String) -> Bool {

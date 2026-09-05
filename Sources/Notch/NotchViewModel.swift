@@ -44,13 +44,24 @@ final class NotchViewModel: ObservableObject {
     /// True while the Mac is actually being held awake right now.
     @Published var isHoldingAwake = false
 
-    /// What the keep-awake handle shows on hover: a cup that is full while
-    /// the Mac is held, empty while it merely would be, and a moon when the
-    /// whole thing is switched off.
-    var awakeSymbol: String {
-        guard keepAwakeEnabled else { return "moon.zzz" }
-        return isHoldingAwake ? "cup.and.saucer.fill" : "cup.and.saucer"
+    /// What the keep-awake handle shows on hover, Caffeine's own convention:
+    /// a full cup when it is on, an empty one when it is off. Colour says the
+    /// same thing again — green on, grey off — and the caption says it in
+    /// words, including the one case the cup alone could not: on, but with
+    /// nothing running, so the Mac may sleep after all.
+    var awakeSymbol: String { keepAwakeEnabled ? "cup.and.saucer.fill" : "cup.and.saucer" }
+    var awakeTint: Color { keepAwakeEnabled ? Palette.ample : Palette.textSecondary }
+    var awakeDim: Bool { keepAwakeEnabled && !isHoldingAwake }
+    var awakeCaption: String {
+        guard keepAwakeEnabled else { return "Off" }
+        return isHoldingAwake ? "Keeping awake" : "No agents running"
     }
+
+    /// How a second window is drawn in a cell, from Settings.
+    @Published var secondaryStyle: SecondaryStyle = .innerRing
+    /// Bumped whenever a measurement behind the layout changes — the notch's
+    /// scale, or room for the bar — so the views re-read `NotchLayout`.
+    @Published var layoutVersion = 0
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.
     @Published var edge: NotchEdge = .right

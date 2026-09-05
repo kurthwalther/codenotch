@@ -126,6 +126,28 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// with enough readings behind them to say. Worked out by the store from
     /// its history, not reported by any vendor.
     var pace: [String: UsagePace] = [:]
+    /// A second window to show in the cell beside the ring's, chosen by the
+    /// user. Nil, or the ring's own window, means none.
+    var secondaryID: String?
+
+    /// The second window, when it is here and is not the ring's own.
+    var secondary: LimitWindow? {
+        guard let secondaryID, secondaryID != headline?.id else { return nil }
+        return windows.first { $0.id == secondaryID }
+    }
+
+    /// What the cell draws for it — nothing without a denominator.
+    var secondaryReading: SecondaryReading? {
+        secondary?.usedFraction.map(SecondaryReading.init)
+    }
+
+    /// The same reading with a second window chosen. Like `choosingHeadline`,
+    /// a window that is not in this reading is simply not shown.
+    func choosingSecondary(_ windowID: String?) -> ProviderSnapshot {
+        var chosen = self
+        chosen.secondaryID = windowID
+        return chosen
+    }
 
     /// The same reading with the ring pointed at `windowID`, when that window
     /// is in it. Anything else keeps the provider's own default: a choice made

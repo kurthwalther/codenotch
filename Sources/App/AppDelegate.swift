@@ -146,15 +146,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .store(in: &cancellables)
 
             // The store reports what each provider puts on its ring; the user's
-            // choice is laid over it here, so a change in Settings or the menu
-            // re-points the ring without a fetch.
+            // choices are laid over it here, so a change in Settings or the
+            // menu re-points the ring without a fetch.
             store.$snapshots
-                .combineLatest(preferences.$ringWindows)
+                .combineLatest(preferences.$ringWindows, preferences.$secondaryWindows)
                 .receive(on: RunLoop.main)
-                .sink { [weak controller] snapshots, chosen in
+                .sink { [weak controller] snapshots, rings, seconds in
                     withAnimation(NotchMotion.unfold) {
                         controller?.model.snapshots = snapshots.map {
-                            $0.choosingHeadline(chosen[$0.id])
+                            $0.choosingHeadline(rings[$0.id]).choosingSecondary(seconds[$0.id])
                         }
                     }
                     controller?.model.now = Date()
@@ -163,6 +163,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.onChooseRingWindow = { providerID, windowID in
                 preferences.setRingWindow(windowID, for: providerID)
             }
+            controller.onChooseSecondaryWindow = { providerID, windowID in
+                preferences.setSecondaryWindow(windowID, for: providerID)
+            }
+
+            // Measurements behind the layout. Applied synchronously, on the
+            // thread the settings change on, so the first layout already has
+            // them — and a slider drag redraws as it goes.
+            preferences.$notchScale
+                .removeDuplicates()
+                .sink { [weak controller] in controller?.apply(scale: $0) }
+                .store(in: &cancellables)
+            preferences.$secondaryStyle
+                .removeDuplicates()
+                .sink { [weak controller] in controller?.apply(secondaryStyle: $0) }
+                .store(in: &cancellables)
             store.start()
             controller.onRefresh = { [weak store] in store?.refreshNow() }
             controller.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
