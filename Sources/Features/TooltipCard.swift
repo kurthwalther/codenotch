@@ -1,14 +1,18 @@
 import SwiftUI
 
-/// The speech-bubble tail, its point aimed at the hovered cell.
+/// The card's tail, reaching for the hovered cell.
 ///
-/// Not a triangle, and not a thorn either. A message bubble's tail has a
-/// particular profile: it leaves the bubble with a rounded belly and then
-/// turns the other way, sweeping concavely in to a fine point. Two straight
-/// edges read as an arrow stuck on the card; a concave fillet into a rounded
-/// tip, which this replaced, read as a drip. This one is the bubble's tail,
-/// mirrored top and bottom so it can sit in the middle of an edge rather than
-/// at a corner: each side is one S-curve, convex first and concave last.
+/// Not a tail at all, in the end, but a swell: the card's edge rises out of
+/// itself toward the ring the way one drop leans toward another before they
+/// touch. A triangle read as an arrow stuck on; a fillet into a rounded tip
+/// read as a drip; a bubble's belly-and-hook read as an onion. This one has
+/// no point to argue about. Each side is one S-curve that leaves the card's
+/// edge *along* the edge — so the join is seamless — and turns into a dome
+/// that closes at a gently rounded apex.
+///
+/// The swell's shoulders overhang the tail's own frame along the card's edge,
+/// by `shoulder` of the breadth each way; the frame still fixes the length,
+/// which is what the panel's geometry is built on.
 ///
 /// Written once, for a tail pointing right, and turned onto the other three
 /// directions — the same arrangement `SideNotchShape` uses.
@@ -17,17 +21,15 @@ struct TooltipTail: Shape {
     /// other way, at the cell.
     let direction: NotchEdge.TooltipDirection
 
-    /// How far along the tail the belly's control point sits, as a share of
-    /// the length. It sets how full the tail is near the card: higher is a
-    /// rounder belly.
-    static let belly: CGFloat = 0.45
-    /// How far back from the tip the hook's control point sits, as a share of
-    /// the length. Longer is a longer, more gradual sweep into the point.
-    static let hook: CGFloat = 0.5
-    /// The slope each edge arrives at the point with, across per along. Both
-    /// edges arrive this steeply, so the point's angle is twice this: small
-    /// enough to be a point, not so small that it is a needle.
-    static let pointSlope: CGFloat = 0.25
+    /// How far past the frame, each way, the swell's shoulders reach along the
+    /// card — as a share of the frame's breadth. Wider is a gentler rise.
+    static let shoulder: CGFloat = 0.35
+    /// The handle at the card's edge, as a share of the half-span: how long
+    /// the edge keeps running straight before it starts to lean out.
+    static let baseHandle: CGFloat = 0.45
+    /// The handle at the apex, as a share of the half-span. Shorter is a
+    /// finer apex; at 0.45 it was blunt, at 0.27 nearly a point.
+    static let apexHandle: CGFloat = 0.35
 
     func path(in rect: CGRect) -> Path {
         // Canonical: `u` along the tail from the card (0) to the tip, `v`
@@ -63,28 +65,28 @@ struct TooltipTail: Shape {
         }
     }
 
-    /// The tail pointing right: base along `u == 0`, tip at `(length, breadth/2)`.
+    /// The swell pointing right: base along `u == 0`, apex at `(length, breadth/2)`,
+    /// shoulders from `-shoulder * breadth` to `breadth * (1 + shoulder)`.
     static func canonicalPath(length: CGFloat, breadth: CGFloat) -> Path {
         let h = breadth / 2
-        let tip = CGPoint(x: length, y: h)
-        // The belly's control point holds the edge level as it leaves the card,
-        // so it bows out before it turns; the hook's sits back from the point
-        // on the line the edge arrives along, so it sweeps in concavely and
-        // meets its mirror at a clean angle. One cubic, one inflection.
-        let bellyOut = belly * length
-        let hookBack = hook * length
+        let overhang = shoulder * breadth
+        // From a shoulder to the apex, along and across.
+        let span = h + overhang
 
         var path = Path()
-        path.move(to: CGPoint(x: 0, y: 0))
+        path.move(to: CGPoint(x: 0, y: -overhang))
+        // Upper side: leaves running down the card's edge, arrives at the apex
+        // running down its tangent — vertical at both ends, so the join with
+        // the card is seamless and the apex is a true dome.
         path.addCurve(
-            to: tip,
-            control1: CGPoint(x: bellyOut, y: 0),
-            control2: CGPoint(x: length - hookBack, y: h - pointSlope * hookBack)
+            to: CGPoint(x: length, y: h),
+            control1: CGPoint(x: 0, y: -overhang + baseHandle * span),
+            control2: CGPoint(x: length, y: h - apexHandle * span)
         )
         path.addCurve(
-            to: CGPoint(x: 0, y: breadth),
-            control1: CGPoint(x: length - hookBack, y: h + pointSlope * hookBack),
-            control2: CGPoint(x: bellyOut, y: breadth)
+            to: CGPoint(x: 0, y: breadth + overhang),
+            control1: CGPoint(x: length, y: h + apexHandle * span),
+            control2: CGPoint(x: 0, y: breadth + overhang - baseHandle * span)
         )
         path.closeSubpath()
         return path
