@@ -25,6 +25,10 @@ final class OrbRenderTests: XCTestCase {
                                 atStart: true, spin: 0, tint: Palette.textSecondary,
                                 caption: "Off")
                         .frame(width: 140, height: 90)
+                    SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.heat.waves.fill",
+                                atStart: true, spin: 0, tint: Palette.espresso, glow: true,
+                                caption: "Keeping awake")
+                        .frame(width: 140, height: 90)
                 }
             }
         }

@@ -20,6 +20,26 @@ final class PolishTests: XCTestCase {
         XCTAssertFalse(Preferences(defaults: defaults).hideInFullscreen)
     }
 
+    /// A choice made under the two earlier keys — a switch and a scope — is
+    /// carried into the one setting that replaced them.
+    func testTheOldKeepAwakeKeysAreCarriedAcross() {
+        let off = scratch()
+        off.set(false, forKey: "keepAwakeWhileWorking")
+        XCTAssertEqual(Preferences(defaults: off).keepAwakeMode, .off)
+
+        let working = scratch()
+        working.set(true, forKey: "keepAwakeWhileWorking")
+        working.set("whileWorking", forKey: "keepAwakeScope")
+        XCTAssertEqual(Preferences(defaults: working).keepAwakeMode, .whileWorking)
+
+        XCTAssertEqual(Preferences(defaults: scratch()).keepAwakeMode, .whileOpen, "fresh: while open")
+
+        let chosen = scratch()
+        let prefs = Preferences(defaults: chosen)
+        prefs.keepAwakeMode = .whileWorking
+        XCTAssertEqual(Preferences(defaults: chosen).keepAwakeMode, .whileWorking)
+    }
+
     func testThePinIsRemembered() {
         let defaults = scratch()
         let first = Preferences(defaults: defaults)

@@ -204,29 +204,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // is working and what holds the Mac awake can never disagree.
             let keepAwake = KeepAwake()
             self.keepAwake = keepAwake
-            Publishers.CombineLatest4(
-                preferences.$keepAwakeWhileWorking,
+            Publishers.CombineLatest3(
+                preferences.$keepAwakeMode,
                 preferences.$keepDisplayAwake,
-                preferences.$keepAwakeScope,
                 controller.model.$sessions
             )
-            .map { KeepAwake.wanted(enabled: $0, display: $1, scope: $2, sessions: $3) }
+            .map { KeepAwake.wanted(mode: $0, display: $1, sessions: $2) }
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { keepAwake.hold($0) }
             .store(in: &cancellables)
 
-            // The handle above the notch: the same switch Settings has, in
-            // reach without opening anything, and a cup that fills while the
-            // Mac is actually being held.
-            controller.onToggleKeepAwake = { preferences.keepAwakeWhileWorking.toggle() }
-            preferences.$keepAwakeWhileWorking
+            // The handle above the notch: the same setting Settings has, in
+            // reach without opening anything, stepped round a position per
+            // click, and a cup that says which position it is in.
+            controller.onToggleKeepAwake = { preferences.keepAwakeMode = preferences.keepAwakeMode.next }
+            preferences.$keepAwakeMode
                 .receive(on: RunLoop.main)
-                .sink { [weak controller] in controller?.model.keepAwakeEnabled = $0 }
-                .store(in: &cancellables)
-            preferences.$keepAwakeScope
-                .receive(on: RunLoop.main)
-                .sink { [weak controller] in controller?.model.keepAwakeScope = $0 }
+                .sink { [weak controller] in controller?.model.keepAwakeMode = $0 }
                 .store(in: &cancellables)
             keepAwake.$held
                 .receive(on: RunLoop.main)

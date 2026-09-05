@@ -43,27 +43,37 @@ final class NotchViewModel: ObservableObject {
     @Published var isHoveringSettings = false
     /// The keep-awake handle is under the cursor.
     @Published var isHoveringAwake = false
-    /// Mirrors the preference, so the handle can show which way it is set.
-    @Published var keepAwakeEnabled = true
-    /// And when it holds, so the caption can say what it is waiting for.
-    @Published var keepAwakeScope: KeepAwakeScope = .whileWorking
+    /// Mirrors the preference, so the handle can show which position it is in.
+    @Published var keepAwakeMode: KeepAwakeMode = .whileWorking
     /// True while the Mac is actually being held awake right now.
     @Published var isHoldingAwake = false
 
-    /// What the keep-awake handle shows on hover, Caffeine's own convention:
-    /// a full cup when it is on, an empty one when it is off. Colour says the
-    /// same thing again — green on, grey off — and the caption says it in
-    /// words, including the one case the cup alone could not: on, but with
-    /// nothing running, so the Mac may sleep after all.
-    var awakeSymbol: String { keepAwakeEnabled ? "cup.and.saucer.fill" : "cup.and.saucer" }
-    var awakeTint: Color { keepAwakeEnabled ? Palette.cappuccino : Palette.textSecondary }
-    var awakeDim: Bool { keepAwakeEnabled && !isHoldingAwake }
+    /// What the keep-awake handle shows on hover, one cup per position: empty
+    /// and grey for off; full, coffee-coloured, for while working; steaming,
+    /// a shade stronger and lit from behind, for while open — the position
+    /// that keeps the Mac up through the night. Faded whenever the position is
+    /// on but nothing qualifies, and the caption says what is missing.
+    var awakeSymbol: String {
+        switch keepAwakeMode {
+        case .off:          return "cup.and.saucer"
+        case .whileWorking: return "cup.and.saucer.fill"
+        case .whileOpen:    return "cup.and.heat.waves.fill"
+        }
+    }
+    var awakeTint: Color {
+        switch keepAwakeMode {
+        case .off:          return Palette.textSecondary
+        case .whileWorking: return Palette.cappuccino
+        case .whileOpen:    return Palette.espresso
+        }
+    }
+    var awakeGlows: Bool { keepAwakeMode == .whileOpen && isHoldingAwake }
+    var awakeDim: Bool { keepAwakeMode.isOn && !isHoldingAwake }
     var awakeCaption: String {
-        guard keepAwakeEnabled else { return "Off" }
-        if isHoldingAwake { return "Keeping awake" }
-        switch keepAwakeScope {
-        case .whileWorking: return "No agents running"
-        case .whileOpen:    return "No sessions open"
+        switch keepAwakeMode {
+        case .off:          return "Off"
+        case .whileWorking: return isHoldingAwake ? "Keeping awake" : "No agents running"
+        case .whileOpen:    return isHoldingAwake ? "Keeping awake" : "No sessions open"
         }
     }
 

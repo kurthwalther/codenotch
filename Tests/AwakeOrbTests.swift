@@ -72,22 +72,27 @@ final class AwakeOrbTests: XCTestCase {
     /// cannot: on, but with nothing running.
     func testTheCupAndTheCaptionSayWhatIsHappening() {
         let m = NotchViewModel()
-        m.keepAwakeEnabled = false
+        m.keepAwakeMode = .off
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer")
         XCTAssertEqual(m.awakeCaption, "Off")
         XCTAssertFalse(m.awakeDim)
+        XCTAssertFalse(m.awakeGlows)
 
-        m.keepAwakeEnabled = true
+        m.keepAwakeMode = .whileWorking
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
         XCTAssertEqual(m.awakeCaption, "No agents running")
         XCTAssertTrue(m.awakeDim, "on with nothing to hold is shown faded")
 
-        m.keepAwakeScope = .whileOpen
-        XCTAssertEqual(m.awakeCaption, "No sessions open", "while open, it is sessions that are missing")
-
         m.isHoldingAwake = true
-        XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
         XCTAssertEqual(m.awakeCaption, "Keeping awake")
         XCTAssertFalse(m.awakeDim)
+        XCTAssertFalse(m.awakeGlows, "only the steaming cup glows")
+
+        m.keepAwakeMode = .whileOpen
+        XCTAssertEqual(m.awakeSymbol, "cup.and.heat.waves.fill")
+        XCTAssertTrue(m.awakeGlows)
+        m.isHoldingAwake = false
+        XCTAssertEqual(m.awakeCaption, "No sessions open", "while open, it is sessions that are missing")
+        XCTAssertFalse(m.awakeGlows)
     }
 }

@@ -37,6 +37,8 @@ struct SettingsOrb: View {
     var tint: Color = Palette.textPrimary
     /// Faded, for "switched on but with nothing to do right now".
     var dim: Bool = false
+    /// Lit from behind, for the position that is holding the Mac right now.
+    var glow: Bool = false
     /// A word or two beside the disc on hover, in its own small black pill,
     /// on the side away from the bezel. What the cup means, said outright.
     var caption: String? = nil
@@ -120,6 +122,8 @@ struct SettingsOrb: View {
             Image(systemName: symbol)
                 .font(.system(size: NotchLayout.orbGlyph, weight: .regular))
                 .foregroundStyle(tint)
+                .shadow(color: Palette.textPrimary.opacity(glow ? 0.85 : 0),
+                        radius: NotchLayout.orbGlyph * 0.28)
                 .opacity(isHovered ? (dim ? 0.55 : 1) : 0)
                 .scaleEffect(isHovered ? 1 : 0.5)
                 .rotationEffect(.degrees(isHovered ? 0 : spin))

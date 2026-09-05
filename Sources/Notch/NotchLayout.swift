@@ -149,9 +149,12 @@ enum NotchLayout {
     // lesser gauge.
     static var secondaryBarWidth: CGFloat { ringDiameter * 0.52 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
-    /// The same gap the percent keeps below the ring, so the cell reads as
-    /// bar, ring and number evenly spaced.
-    static var secondaryBarGap: CGFloat { ringLabelGap }
+    /// The gap the percent *appears* to keep below the ring: its line box
+    /// carries blank space above the capitals, so the bar — a solid shape with
+    /// none — needs that much more to look evenly spaced.
+    static var secondaryBarGap: CGFloat {
+        ringLabelGap + (percentLineHeight - Design.npx(27)) / 2
+    }
     /// Whether every cell reserves room for that bar — true while any provider
     /// has a second window, so the stack stays uniform: cells with and without
     /// one keep the same pitch, and the hover bands keep lining up with the

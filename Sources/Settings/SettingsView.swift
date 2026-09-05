@@ -127,21 +127,17 @@ struct SettingsView: View {
                 // left to run is the one thing on this Mac that must not be
                 // interrupted by it dozing off — and it is also the one thing
                 // that ends on its own, so the hold ends with it.
-                Toggle("Keep this Mac awake while an agent is working",
-                       isOn: $preferences.keepAwakeWhileWorking)
-                Picker("Hold", selection: $preferences.keepAwakeScope) {
-                    ForEach(KeepAwakeScope.allCases) { Text($0.title).tag($0) }
+                Picker("Keep this Mac awake", selection: $preferences.keepAwakeMode) {
+                    ForEach(KeepAwakeMode.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .disabled(!preferences.keepAwakeWhileWorking)
-                .padding(.leading, 20)
-                Text(preferences.keepAwakeScope.explanation)
+                Text(preferences.keepAwakeMode.explanation
+                     + " The handle above the notch steps through the same three.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 20)
                 Toggle("Keep the display on as well", isOn: $preferences.keepDisplayAwake)
-                    .disabled(!preferences.keepAwakeWhileWorking)
+                    .disabled(!preferences.keepAwakeMode.isOn)
                     .padding(.leading, 20)
                 Text(SettingsView.keepAwakeCopy)
                     .font(.caption)

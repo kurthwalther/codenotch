@@ -2,8 +2,11 @@ import Combine
 import Foundation
 import IOKit.pwr_mgt
 
-/// When the Mac is held awake, chosen in Settings.
-enum KeepAwakeScope: String, CaseIterable, Identifiable {
+/// Whether, and when, the Mac is held awake. One setting with three
+/// positions, and the handle above the notch steps through them.
+enum KeepAwakeMode: String, CaseIterable, Identifiable {
+    /// Never. The Mac sleeps as it would without Codenotch.
+    case off
     /// Only while a session is busy. Released the moment every agent is idle
     /// or waiting on you.
     case whileWorking
@@ -14,21 +17,37 @@ enum KeepAwakeScope: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var isOn: Bool { self != .off }
+
+    /// The next position round: off, working, open, off…
+    var next: KeepAwakeMode {
+        switch self {
+        case .off:          return .whileWorking
+        case .whileWorking: return .whileOpen
+        case .whileOpen:    return .off
+        }
+    }
+
     var title: String {
         switch self {
-        case .whileWorking: return "While an agent is working"
-        case .whileOpen:    return "While a session is open"
+        case .off:          return "Off"
+        case .whileWorking: return "While working"
+        case .whileOpen:    return "While open"
         }
     }
 
     var explanation: String {
         switch self {
+        case .off:
+            return "The Mac sleeps as it always has."
         case .whileWorking:
-            return "Released as soon as every agent is idle or waiting on you."
+            return "Held while any agent is busy, and released as soon as every "
+                 + "one is idle or waiting on you."
         case .whileOpen:
             return "Held for as long as any session exists, even one waiting on "
                  + "you — so Claude Code can be driven remotely without the Mac "
-                 + "dozing off. A session left open on battery keeps it awake too."
+                 + "dozing off. The display still sleeps; only the Mac stays up. "
+                 + "A session left open on battery keeps it awake too."
         }
     }
 }
@@ -69,14 +88,16 @@ final class KeepAwake: ObservableObject {
     /// While working, only `busy` counts: a session waiting on you is not
     /// going anywhere until you come back. While open, any session counts,
     /// because "waiting on you" may mean waiting on your phone.
-    static func wanted(enabled: Bool, display: Bool, scope: KeepAwakeScope = .whileWorking,
+    static func wanted(mode: KeepAwakeMode, display: Bool,
                        sessions: [String: [AgentSession]]) -> Scope? {
-        guard enabled, holds(scope, sessions: sessions) else { return nil }
+        guard holds(mode, sessions: sessions) else { return nil }
         return display ? .display : .system
     }
 
-    static func holds(_ scope: KeepAwakeScope, sessions: [String: [AgentSession]]) -> Bool {
-        switch scope {
+    static func holds(_ mode: KeepAwakeMode, sessions: [String: [AgentSession]]) -> Bool {
+        switch mode {
+        case .off:
+            return false
         case .whileWorking:
             return sessions.values.contains { $0.contains { $0.state == .busy } }
         case .whileOpen:

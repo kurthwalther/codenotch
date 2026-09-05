@@ -21,6 +21,10 @@ enum Palette {
     /// green — the cup is a switch, not a reading, and green already means
     /// "plenty left" one ring down.
     static let cappuccino    = Color(hex: 0xD8B48A)
+    /// The same cup, steaming, for the position that holds the Mac through
+    /// the night: a shade stronger, so the two positions are told apart at a
+    /// glance.
+    static let espresso      = Color(hex: 0xF2A65A)
 }
 
 extension Color {

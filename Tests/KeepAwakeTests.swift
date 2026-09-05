@@ -11,14 +11,14 @@ final class KeepAwakeTests: XCTestCase {
     }
 
     func testNothingIsHeldWhileEverythingIsIdle() {
-        XCTAssertNil(KeepAwake.wanted(enabled: true, display: false,
+        XCTAssertNil(KeepAwake.wanted(mode: .whileWorking, display: false,
                                       sessions: ["claude": [session(.idle)]]))
-        XCTAssertNil(KeepAwake.wanted(enabled: true, display: false, sessions: [:]))
+        XCTAssertNil(KeepAwake.wanted(mode: .whileWorking, display: false, sessions: [:]))
     }
 
     func testOneBusySessionAnywhereHoldsTheMac() {
         XCTAssertEqual(
-            KeepAwake.wanted(enabled: true, display: false,
+            KeepAwake.wanted(mode: .whileWorking, display: false,
                              sessions: ["claude": [session(.idle)], "codex": [session(.busy)]]),
             .system
         )
@@ -27,13 +27,13 @@ final class KeepAwakeTests: XCTestCase {
     /// Waiting is not working: the agent is blocked on you, and nothing is lost
     /// by the Mac sleeping until you come back.
     func testWaitingDoesNotHoldTheMac() {
-        XCTAssertNil(KeepAwake.wanted(enabled: true, display: false,
+        XCTAssertNil(KeepAwake.wanted(mode: .whileWorking, display: false,
                                       sessions: ["claude": [session(.waiting)]]))
     }
 
     func testTheDisplayIsOnlyHeldWhenAsked() {
         XCTAssertEqual(
-            KeepAwake.wanted(enabled: true, display: true, sessions: ["claude": [session(.busy)]]),
+            KeepAwake.wanted(mode: .whileWorking, display: true, sessions: ["claude": [session(.busy)]]),
             .display
         )
     }
@@ -42,22 +42,28 @@ final class KeepAwakeTests: XCTestCase {
     /// that is the remote case, where the agent spends its time waiting.
     func testWhileOpenAnySessionHoldsTheMac() {
         XCTAssertEqual(
-            KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+            KeepAwake.wanted(mode: .whileOpen, display: false,
                              sessions: ["claude": [session(.waiting)]]),
             .system
         )
         XCTAssertEqual(
-            KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+            KeepAwake.wanted(mode: .whileOpen, display: false,
                              sessions: ["claude": [session(.idle)]]),
             .system
         )
-        XCTAssertNil(KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+        XCTAssertNil(KeepAwake.wanted(mode: .whileOpen, display: false,
                                       sessions: ["claude": []]),
                      "no session at all, and the Mac may sleep")
     }
 
+    func testThePositionsStepRound() {
+        XCTAssertEqual(KeepAwakeMode.off.next, .whileWorking)
+        XCTAssertEqual(KeepAwakeMode.whileWorking.next, .whileOpen)
+        XCTAssertEqual(KeepAwakeMode.whileOpen.next, .off)
+    }
+
     func testSwitchedOffHoldsNothing() {
-        XCTAssertNil(KeepAwake.wanted(enabled: false, display: true,
+        XCTAssertNil(KeepAwake.wanted(mode: .off, display: true,
                                       sessions: ["claude": [session(.busy)]]))
     }
 

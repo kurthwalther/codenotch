@@ -49,6 +49,7 @@ struct NotchRootView: View {
                                 spin: 0,
                                 tint: model.awakeTint,
                                 dim: model.awakeDim,
+                                glow: model.awakeGlows,
                                 caption: model.awakeCaption,
                                 scale: Design.notchFactor)
                         .position(awakeCentre(place))
