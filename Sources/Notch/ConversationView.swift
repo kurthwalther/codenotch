@@ -232,26 +232,27 @@ struct ConversationView: View {
 }
 
 /// The agent is writing: three dots that breathe, where its turn will be.
+/// Driven by a slow clock rather than three endless animations.
 private struct WorkingRow: View {
     let providerName: String
-    @State private var on = false
 
     var body: some View {
         HStack(spacing: Design.px(12)) {
             Text(providerName)
                 .font(Typography.cardBody.weight(.semibold))
                 .foregroundStyle(Palette.textPrimary)
-            HStack(spacing: Design.px(6)) {
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .fill(Palette.textSecondary)
-                        .frame(width: Design.px(9), height: Design.px(9))
-                        .opacity(on ? 1 : 0.25)
-                        .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
-                                    .delay(Double(i) * 0.2), value: on)
+            TimelineView(.animation(minimumInterval: 1.0 / 12)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                HStack(spacing: Design.px(6)) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let phase = ((t / 1.2) - Double(i) * 0.17).truncatingRemainder(dividingBy: 1)
+                        Circle()
+                            .fill(Palette.textSecondary)
+                            .frame(width: Design.px(9), height: Design.px(9))
+                            .opacity(0.25 + 0.75 * (0.5 - 0.5 * cos(phase * 2 * .pi)))
+                    }
                 }
             }
-            .onAppear { on = true }
         }
     }
 }

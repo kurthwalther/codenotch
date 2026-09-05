@@ -237,7 +237,9 @@ final class NotchWindowController {
     /// go faster than that.
     private func checkFullscreen(force: Bool = false) {
         fullscreenTick += 1
-        guard force || fullscreenTick % 3 == 0 else { return }
+        // Every couple of seconds: the window list is not free to walk, and
+        // a film does not start faster than that.
+        guard force || fullscreenTick % 7 == 0 else { return }
         let screen = panel?.screen ?? NSScreen.main
         let hidden = hidesInFullscreen && screen.map(FullscreenDetector.isFullscreenAppFrontmost(on:)) == true
         guard hidden != hiddenForFullscreen, let panel else { return }

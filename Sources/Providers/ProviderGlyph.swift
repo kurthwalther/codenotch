@@ -70,11 +70,16 @@ struct GlyphShape: Shape {
 
 struct ProviderGlyphView: View {
     let glyph: ProviderGlyph
+    /// A symbol to draw instead of the logo, when one was chosen.
+    var symbol: String? = nil
     var size: CGFloat = NotchLayout.glyphSize
 
     var body: some View {
         Group {
-            if let image = NSImage(named: glyph.assetName) {
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.92, weight: .medium))
+            } else if let image = NSImage(named: glyph.assetName) {
                 Image(nsImage: image)
                     .renderingMode(.template)
                     .resizable()

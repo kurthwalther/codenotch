@@ -18,6 +18,8 @@ struct ProviderRing: View {
     /// there is no arc to draw, and inventing one would be a lie in a shape.
     let usedFraction: Double?
     let glyph: ProviderGlyph
+    /// A symbol in place of the logo, when one was chosen.
+    var symbol: String? = nil
     var isStale: Bool = false
     /// Blocked right now. Shown as spent whatever the arc says, because that is
     /// what it means for you — a ring reading 16% while the account is paused
@@ -83,7 +85,7 @@ struct ProviderRing: View {
                         .opacity(isResting ? NotchViewModel.restingOpacity : 1)
                 }
 
-                ProviderGlyphView(glyph: glyph, size: NotchLayout.glyphSize)
+                ProviderGlyphView(glyph: glyph, symbol: symbol, size: NotchLayout.glyphSize)
                     .foregroundStyle(Palette.textPrimary)
                     // A spent limit dims its glyph so the ring reads as "waiting".
                     .opacity(band == .exhausted ? 0.35 : 1)
@@ -92,7 +94,7 @@ struct ProviderRing: View {
             .opacity(isStale ? 0.45 : 1)
 
             if let activity, activity.state != .idle {
-                ActivityArc(summary: activity, scale: scale)
+                ActivityArc(summary: activity, scale: scale, isResting: isResting)
                     .opacity(isResting ? 0.3 : 1)
             }
         }
@@ -128,13 +130,22 @@ private struct ActivityArc: View {
     let summary: ActivitySummary
     /// See `ProviderRing.scale`.
     var scale: CGFloat = Design.notchFactor
+    /// At rest the arc stands still: it is already faded to a whisper, and
+    /// a spinner nobody is looking at is the one thing here that costs a
+    /// steady share of a core.
+    var isResting: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var spinning = false
-    @State private var pulsing = false
 
     /// How much of the circle the moving arc covers.
     private let arcFraction: CGFloat = 0.25
+    /// One turn, and one breath, in seconds.
+    private static let turn: Double = 1.1
+    private static let breath: Double = 1.8
+    /// Frames a second. Thirty is smooth to the eye; the display's own 120
+    /// would have SwiftUI re-evaluating the panel four times as often for
+    /// nothing anyone could see.
+    private static let frame: Double = 1.0 / 30
 
     private var stroke: CGFloat { NotchLayout.activityStroke }
     private var inset: CGFloat {
@@ -152,7 +163,7 @@ private struct ActivityArc: View {
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
     }
 
-    private var spinner: some View {
+    private var arc: some View {
         Circle()
             .inset(by: inset)
             .trim(from: 0, to: arcFraction)
@@ -160,28 +171,48 @@ private struct ActivityArc: View {
                 summary.color,
                 style: StrokeStyle(lineWidth: stroke, lineCap: .round)
             )
-            .rotationEffect(.degrees(spinning ? 360 : 0))
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) {
-                    spinning = true
-                }
-            }
-            .onDisappear { spinning = false }
     }
 
-    private var pulse: some View {
+    /// Driven by the clock rather than by an endless animation: the angle is
+    /// a function of the time, drawn thirty times a second, and nothing has
+    /// to be cancelled to stop — at rest, or with motion reduced, it is
+    /// simply drawn once.
+    @ViewBuilder
+    private var spinner: some View {
+        if reduceMotion || isResting {
+            arc.rotationEffect(.degrees(-90))
+        } else {
+            TimelineView(.animation(minimumInterval: Self.frame)) { context in
+                arc.rotationEffect(.degrees(Self.angle(at: context.date)))
+            }
+        }
+    }
+
+    static func angle(at date: Date) -> Double {
+        (date.timeIntervalSinceReferenceDate / turn).truncatingRemainder(dividingBy: 1) * 360
+    }
+
+    private var ring: some View {
         Circle()
             .inset(by: inset)
             .stroke(summary.color, lineWidth: stroke)
-            .opacity(pulsing ? 0.3 : 1)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                    pulsing = true
-                }
+    }
+
+    @ViewBuilder
+    private var pulse: some View {
+        if reduceMotion || isResting {
+            ring
+        } else {
+            TimelineView(.animation(minimumInterval: Self.frame)) { context in
+                ring.opacity(Self.breathing(at: context.date))
             }
-            .onDisappear { pulsing = false }
+        }
+    }
+
+    /// Between 0.3 and 1, smoothly, once every breath.
+    static func breathing(at date: Date) -> Double {
+        let phase = (date.timeIntervalSinceReferenceDate / breath).truncatingRemainder(dividingBy: 1)
+        return 0.3 + 0.7 * (0.5 - 0.5 * cos(phase * 2 * .pi))
     }
 }
 
@@ -239,6 +270,7 @@ struct ProviderCell: View {
             ProviderRing(
                 usedFraction: snapshot.hasReading ? snapshot.ringFraction : nil,
                 glyph: snapshot.glyph,
+                symbol: snapshot.iconSymbol,
                 isStale: snapshot.status.isStale || !snapshot.hasReading,
                 isBlocked: snapshot.block != nil,
                 activity: activity,
@@ -286,16 +318,16 @@ struct ProviderCell: View {
         if snapshot.hasReading, let resetsAt = snapshot.headline?.resetsAt {
             HStack(spacing: Design.npx(3)) {
                 Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: Design.notchFontSize(capPixels: 9), weight: .semibold))
+                    .font(.system(size: Design.notchFontSize(capPixels: 10.5), weight: .semibold))
                 Text(ResetCopy.short(for: resetsAt, now: now))
-                    .font(Typography.caption)
+                    .font(Typography.barName)
                     .lineLimit(1)
             }
-            .foregroundStyle(Palette.textSecondary)
+            .foregroundStyle(Palette.textBright)
             .fixedSize()
-            .frame(height: NotchLayout.captionLineHeight)
+            .frame(height: NotchLayout.resetLineHeight)
         } else {
-            caption(" ")
+            Color.clear.frame(height: NotchLayout.resetLineHeight)
         }
     }
 

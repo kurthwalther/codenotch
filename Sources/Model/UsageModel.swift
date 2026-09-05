@@ -143,6 +143,14 @@ struct ProviderSnapshot: Identifiable, Equatable {
     var secondaryID: String?
     /// What the number under the ring says.
     var cellLabel: CellLabel = .percentLeft
+    /// A symbol in place of the logo, chosen by the user. Nil is the logo.
+    var iconSymbol: String?
+
+    func choosingIcon(_ symbol: String?) -> ProviderSnapshot {
+        var chosen = self
+        chosen.iconSymbol = ProviderIcon.symbol(for: symbol)
+        return chosen
+    }
 
     /// The same reading with the number under the ring saying something else.
     func choosingLabel(_ label: CellLabel?) -> ProviderSnapshot {

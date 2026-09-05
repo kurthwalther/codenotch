@@ -67,6 +67,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(cellLabels, forKey: Keys.cellLabels) }
     }
 
+    /// A symbol in each provider's ring instead of its logo. Absent means
+    /// the logo.
+    @Published var providerIcons: [String: String] {
+        didSet { defaults.set(providerIcons, forKey: Keys.providerIcons) }
+    }
+
     /// Where the colours change, as shares left.
     @Published var thresholds: UsageThresholds {
         didSet {
@@ -155,6 +161,7 @@ final class Preferences: ObservableObject {
         static let ringWindows = "ringWindows"
         static let secondaryWindows = "secondaryWindows"
         static let cellLabels = "cellLabels"
+        static let providerIcons = "providerIcons"
         static let watchBelow = "watchBelowLeft"
         static let criticalBelow = "criticalBelowLeft"
         static let notchScale = "notchScale"
@@ -231,6 +238,7 @@ final class Preferences: ObservableObject {
         self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
         self.secondaryWindows = defaults.dictionary(forKey: Keys.secondaryWindows) as? [String: String] ?? [:]
         self.cellLabels = defaults.dictionary(forKey: Keys.cellLabels) as? [String: String] ?? [:]
+        self.providerIcons = defaults.dictionary(forKey: Keys.providerIcons) as? [String: String] ?? [:]
         self.thresholds = UsageThresholds(
             watchBelowLeft: defaults.object(forKey: Keys.watchBelow) as? Double
                 ?? UsageThresholds.standard.watchBelowLeft,
@@ -284,6 +292,12 @@ final class Preferences: ObservableObject {
 
     func setCellLabel(_ label: CellLabel, for providerID: String) {
         cellLabels[providerID] = label == .percentLeft ? nil : label.rawValue
+    }
+
+    func icon(for providerID: String) -> String? { ProviderIcon.symbol(for: providerIcons[providerID]) }
+
+    func setIcon(_ symbol: String?, for providerID: String) {
+        providerIcons[providerID] = ProviderIcon.symbol(for: symbol)
     }
 
     func setSecondaryWindow(_ windowID: String?, for providerID: String) {

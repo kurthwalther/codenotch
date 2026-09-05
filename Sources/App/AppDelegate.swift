@@ -153,13 +153,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // menu re-points the ring without a fetch.
             store.$snapshots
                 .combineLatest(preferences.$ringWindows, preferences.$secondaryWindows,
-                               preferences.$cellLabels)
+                               preferences.$cellLabels.combineLatest(preferences.$providerIcons))
                 .receive(on: RunLoop.main)
-                .sink { [weak controller] snapshots, rings, seconds, labels in
+                .sink { [weak controller] snapshots, rings, seconds, looks in
+                    let (labels, icons) = looks
                     let chosen = snapshots.map {
                         $0.choosingHeadline(rings[$0.id])
                             .choosingSecondary(seconds[$0.id])
                             .choosingLabel(labels[$0.id].flatMap(CellLabel.init(rawValue:)))
+                            .choosingIcon(icons[$0.id])
                     }
                     // Room for the bar is made before the cells are handed
                     // the readings, so both arrive in one layout.

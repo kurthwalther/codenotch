@@ -460,6 +460,32 @@ private struct AccountRow: View {
                     .font(.caption)
                     .padding(.leading, 26)
             }
+            if isConnected {
+                iconPicker
+                    .font(.caption)
+                    .padding(.leading, 26)
+            }
+        }
+    }
+
+    /// What sits in the ring: the provider's logo, or one of a few symbols.
+    private var iconPicker: some View {
+        HStack(spacing: 8) {
+            Text("Icon")
+                .foregroundStyle(.secondary)
+            Picker("Icon", selection: Binding(
+                get: { preferences.icon(for: provider.id) ?? "" },
+                set: { preferences.setIcon($0.isEmpty ? nil : $0, for: provider.id) }
+            )) {
+                Text("Logo").tag("")
+                ForEach(ProviderIcon.choices) { icon in
+                    Label(icon.title, systemImage: icon.symbol).tag(icon.symbol)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .fixedSize()
         }
     }
 

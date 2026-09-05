@@ -170,13 +170,16 @@ enum NotchLayout {
     static var ringCaptionGap: CGFloat { Design.npx(10) }
     /// Name to number: more than the caption gap, so the name reads as a
     /// heading for the number rather than a line of it.
-    static var nameToPercentGap: CGFloat { Design.npx(8) }
+    static var nameToPercentGap: CGFloat { Design.npx(13) }
+    /// The reset line under the number is a size up from the name, and
+    /// brighter: it is the one caption people look for.
+    static var resetLineHeight: CGFloat { secondaryBarNameHeight }
     static var captionLineHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
     }
     /// What the captions add to the frame's cell of ring, gap and number.
     static var captionSpace: CGFloat {
-        ringCaptionGap + captionLineHeight + nameToPercentGap + captionGap + captionLineHeight - ringLabelGap
+        ringCaptionGap + captionLineHeight + nameToPercentGap + captionGap + resetLineHeight - ringLabelGap
     }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with

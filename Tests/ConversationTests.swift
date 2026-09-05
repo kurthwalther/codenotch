@@ -243,7 +243,7 @@ final class CaptionTests: XCTestCase {
     func testEveryCellCarriesTheTwoCaptionLines() {
         XCTAssertEqual(NotchLayout.captionSpace,
                        NotchLayout.ringCaptionGap + NotchLayout.captionLineHeight + NotchLayout.nameToPercentGap
-                           + NotchLayout.captionGap + NotchLayout.captionLineHeight - NotchLayout.ringLabelGap,
+                           + NotchLayout.captionGap + NotchLayout.resetLineHeight - NotchLayout.ringLabelGap,
                        accuracy: 0.001)
         XCTAssertEqual(NotchLayout.cellExtent,
                        NotchLayout.secondaryBarSpace + NotchLayout.ringDiameter + NotchLayout.ringLabelGap
@@ -271,5 +271,37 @@ final class ShadowTests: XCTestCase {
 
     func testTheSliderReachesElevenTenths() {
         XCTAssertEqual(Preferences.notchScaleRange.upperBound, 1.1, accuracy: 0.0001)
+    }
+}
+
+/// A symbol in the ring instead of the logo.
+@MainActor
+final class ProviderIconTests: XCTestCase {
+    func testFiveSymbolsAreOffered() {
+        XCTAssertEqual(ProviderIcon.choices.count, 5)
+        XCTAssertEqual(Set(ProviderIcon.choices.map(\.symbol)).count, 5, "no repeats")
+        XCTAssertTrue(ProviderIcon.choices.contains { $0.symbol == "apple.intelligence" })
+    }
+
+    func testOnlyListedSymbolsAreHonoured() {
+        XCTAssertEqual(ProviderIcon.symbol(for: "brain"), "brain")
+        XCTAssertNil(ProviderIcon.symbol(for: "trash"))
+        XCTAssertNil(ProviderIcon.symbol(for: nil))
+        let s = ProviderSnapshot(id: "claude", displayName: "Claude", glyph: .claude,
+                                 fidelity: .official, status: .ok, windows: [])
+        XCTAssertEqual(s.choosingIcon("atom").iconSymbol, "atom")
+        XCTAssertNil(s.choosingIcon("nope").iconSymbol, "an unknown name is the logo")
+    }
+
+    func testTheChoiceIsRememberedPerProvider() {
+        let name = "icon-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let first = Preferences(defaults: defaults)
+        XCTAssertNil(first.icon(for: "claude"))
+        first.setIcon("sparkles", for: "claude")
+        XCTAssertEqual(Preferences(defaults: defaults).icon(for: "claude"), "sparkles")
+        first.setIcon(nil, for: "claude")
+        XCTAssertNil(Preferences(defaults: defaults).icon(for: "claude"))
     }
 }

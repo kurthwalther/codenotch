@@ -292,7 +292,7 @@ private struct StatusRing: View {
                     // value it is already heading towards does not cancel it —
                     // which is exactly how the refresh ring here once span for
                     // ever. Derived from the clock, it simply stops being drawn.
-                    TimelineView(.animation) { context in
+                    TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
                         ring(trim: 0.75)
                             .rotationEffect(.degrees(angle(at: context.date)))
                     }
@@ -402,7 +402,7 @@ private struct ProviderTooltip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TooltipHeader(title: "\(snapshot.displayName) Usage", note: readingAge) {
-                ProviderGlyphView(glyph: snapshot.glyph)
+                ProviderGlyphView(glyph: snapshot.glyph, symbol: snapshot.iconSymbol)
                     .foregroundStyle(Palette.textPrimary)
             }
 
