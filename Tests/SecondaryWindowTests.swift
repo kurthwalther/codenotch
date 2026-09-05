@@ -67,7 +67,7 @@ final class SecondaryWindowTests: XCTestCase {
         defer { NotchLayout.reservesSecondaryBar = false }
 
         let space = NotchLayout.secondaryBarLabelHeight + NotchLayout.secondaryBarLabelGap
-            + NotchLayout.secondaryBarHeight + NotchLayout.secondaryBarLabelGap
+            + NotchLayout.secondaryBarHeight + NotchLayout.secondaryBarNameGap
             + NotchLayout.captionLineHeight + NotchLayout.secondaryBarGap
         XCTAssertEqual(NotchLayout.cellExtent - extent, space, accuracy: 0.001)
         XCTAssertEqual(NotchLayout.ringCenter(index: 0, edge: .right) - ring, space, accuracy: 0.001,

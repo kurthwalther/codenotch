@@ -81,7 +81,7 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchScale, forKey: Keys.notchScale) }
     }
 
-    static let notchScaleRange: ClosedRange<Double> = 0.6...1.0
+    static let notchScaleRange: ClosedRange<Double> = 0.6...1.1
     static let defaultNotchScale = 0.8
 
     /// Get out of the way while an app has the whole screen.

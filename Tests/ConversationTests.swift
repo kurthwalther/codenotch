@@ -225,17 +225,47 @@ final class CaptionTests: XCTestCase {
         XCTAssertEqual(LimitWindow(id: "i", label: "Included usage", usedFraction: 0.1).shortLabel, "Included")
     }
 
-    func testTheShortResetDropsTheWord() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(51 * 60), now: now), "in 51 min")
-        XCTAssertFalse(ResetCopy.short(for: now.addingTimeInterval(6 * 3600), now: now).hasPrefix("Resets"))
-        XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(-5), now: now), "now")
+    func testTheShortResetIsJustTheTimeWhenItIsToday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        // 10:00 on a Monday.
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 7, hour: 10))!
+        let later = ResetCopy.short(for: now.addingTimeInterval(6 * 3600), now: now, calendar: calendar)
+        XCTAssertNotNil(later.range(of: #"^\d{1,2}:\d{2}"#, options: .regularExpression),
+                        "today: the time alone, got \(later)")
+        XCTAssertFalse(later.contains("Mon"))
+        let tomorrow = ResetCopy.short(for: now.addingTimeInterval(20 * 3600), now: now, calendar: calendar)
+        XCTAssertTrue(tomorrow.contains("Tue"), "another day carries its weekday, got \(tomorrow)")
+        XCTAssertFalse(tomorrow.hasPrefix("Resets"))
+        XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(-5), now: now, calendar: calendar), "now")
     }
 
     func testEveryCellCarriesTheTwoCaptionLines() {
-        XCTAssertEqual(NotchLayout.captionSpace, 2 * (NotchLayout.captionGap + NotchLayout.captionLineHeight), accuracy: 0.001)
+        XCTAssertEqual(NotchLayout.captionSpace,
+                       NotchLayout.ringCaptionGap + NotchLayout.captionLineHeight + NotchLayout.captionGap
+                           + NotchLayout.captionLineHeight + NotchLayout.captionGap - NotchLayout.ringLabelGap,
+                       accuracy: 0.001)
         XCTAssertEqual(NotchLayout.cellExtent,
                        NotchLayout.secondaryBarSpace + NotchLayout.ringDiameter + NotchLayout.ringLabelGap
                            + NotchLayout.percentLineHeight + NotchLayout.captionSpace, accuracy: 0.001)
+    }
+}
+
+/// The shadow lies flat until the pointer arrives.
+@MainActor
+final class ShadowTests: XCTestCase {
+    func testTheShadowNeedsBothTheSettingAndThePointer() {
+        let m = NotchViewModel()
+        XCTAssertFalse(m.castsShadow)
+        m.showsShadow = true
+        XCTAssertFalse(m.castsShadow, "on, but nobody there")
+        m.isPointerOn = true
+        XCTAssertTrue(m.castsShadow)
+        m.showsShadow = false
+        XCTAssertFalse(m.castsShadow)
+    }
+
+    func testTheSliderReachesElevenTenths() {
+        XCTAssertEqual(Preferences.notchScaleRange.upperBound, 1.1, accuracy: 0.0001)
     }
 }

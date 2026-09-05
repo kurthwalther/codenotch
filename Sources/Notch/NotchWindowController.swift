@@ -519,6 +519,8 @@ final class NotchWindowController {
         // On the notch, its handles or its card counts as attention — judged
         // against the full-size regions, so a resting notch wakes as the
         // pointer heads for it rather than once it has arrived.
+        let pointerOn = model.isExpanded && (liveRect.contains(local) || overTooltip)
+        if model.isPointerOn != pointerOn { model.isPointerOn = pointerOn }
         if liveRect.contains(local) || overTooltip {
             lastAttention = Date()
             if model.isResting { checkResting() }

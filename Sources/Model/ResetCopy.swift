@@ -38,10 +38,18 @@ enum ResetCopy {
         return "Resets \(formatter.string(from: resetsAt))"
     }
 
-    /// The same, at caption size: the word "Resets" is the icon's job there.
+    /// The same, at caption size: the word "Resets" is the icon's job there,
+    /// and a reset later today is just its time — the day would be noise.
     static func short(for resetsAt: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        guard resetsAt > now else { return "now" }
+        if calendar.isDate(resetsAt, inSameDayAs: now) {
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = .current
+            formatter.dateFormat = "h:mm a"
+            return formatter.string(from: resetsAt)
+        }
         let full = text(for: resetsAt, now: now, calendar: calendar)
-        if full == "Resetting…" { return "now" }
         return full.hasPrefix("Resets ") ? String(full.dropFirst("Resets ".count)) : full
     }
 

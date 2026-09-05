@@ -149,19 +149,29 @@ enum NotchLayout {
     // lesser gauge.
     static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
-    /// The bar's own number, above it; its name, below; and the gaps.
+    /// The bar's own number, above it; its name, below; and the gaps. The
+    /// name's gap is the larger, so that it *looks* as far from the bar as
+    /// the number does — the number's line box carries blank space of its
+    /// own below the digits, the name's caption face far less.
     static var secondaryBarLabelGap: CGFloat { Design.npx(5) }
+    static var secondaryBarNameGap: CGFloat { Design.npx(11) }
     static var secondaryBarLabelHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 15), weight: .semibold))
     }
-    /// The captions under the ring's number: which window, and when it
-    /// resets. Every cell carries both lines, blank where a provider has
-    /// nothing to say, so the stack keeps one pitch.
+    /// The captions around the ring's number: its window's name between the
+    /// ring and the number, and when it resets under the number. Every cell
+    /// carries both lines, blank where a provider has nothing to say, so the
+    /// stack keeps one pitch.
     static var captionGap: CGFloat { Design.npx(3) }
+    /// Ring to name.
+    static var ringCaptionGap: CGFloat { Design.npx(10) }
     static var captionLineHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
     }
-    static var captionSpace: CGFloat { 2 * (captionGap + captionLineHeight) }
+    /// What the captions add to the frame's cell of ring, gap and number.
+    static var captionSpace: CGFloat {
+        ringCaptionGap + captionLineHeight + captionGap + captionLineHeight + captionGap - ringLabelGap
+    }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with
     /// none — needs that much more to look evenly spaced.
@@ -176,7 +186,7 @@ enum NotchLayout {
     static var secondaryBarSpace: CGFloat {
         reservesSecondaryBar
             ? secondaryBarLabelHeight + secondaryBarLabelGap + secondaryBarHeight
-                + secondaryBarLabelGap + captionLineHeight + secondaryBarGap
+                + secondaryBarNameGap + captionLineHeight + secondaryBarGap
             : 0
     }
     /// The gap between the caption and the keep-awake handle, and inside it.

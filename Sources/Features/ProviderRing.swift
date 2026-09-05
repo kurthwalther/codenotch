@@ -210,9 +210,10 @@ struct ProviderCell: View {
     var body: some View {
         VStack(spacing: 0) {
             if reservesBar {
-                VStack(spacing: NotchLayout.secondaryBarLabelGap) {
+                VStack(spacing: 0) {
                     // Its own number above it, smaller than the ring's and a
-                    // shade quieter; its name below.
+                    // shade quieter; its name below, given the larger gap so
+                    // the two look evenly spaced about the bar.
                     Text(secondary.map { "\(Int(($0.remaining * 100).rounded()))%" } ?? " ")
                         .font(Typography.barPercent)
                         .foregroundStyle(Palette.textMid)
@@ -220,7 +221,9 @@ struct ProviderCell: View {
                         .frame(height: NotchLayout.secondaryBarLabelHeight)
                     secondaryBar
                         .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
+                        .padding(.top, NotchLayout.secondaryBarLabelGap)
                     caption(snapshot.secondary?.shortLabel ?? " ")
+                        .padding(.top, NotchLayout.secondaryBarNameGap)
                 }
                 .padding(.bottom, NotchLayout.secondaryBarGap)
             }
@@ -234,6 +237,11 @@ struct ProviderCell: View {
                 scale: scale,
                 isResting: isResting
             )
+            // Which window the number is, between the ring and the number;
+            // then the number; then when it comes back. Small lines, there
+            // to be found rather than read first.
+            caption(snapshot.headline?.shortLabel ?? " ")
+                .padding(.top, NotchLayout.ringCaptionGap)
             Text(percentText)
                 .font(Typography.percent)
                 .foregroundStyle(Palette.textPrimary)
@@ -245,10 +253,6 @@ struct ProviderCell: View {
                 .frame(height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
-                .padding(.top, NotchLayout.ringLabelGap)
-            // Which window the number is, and when it comes back: two lines
-            // small enough to be found rather than read first.
-            caption(snapshot.headline?.shortLabel ?? " ")
                 .padding(.top, NotchLayout.captionGap)
             resetCaption
                 .padding(.top, NotchLayout.captionGap)

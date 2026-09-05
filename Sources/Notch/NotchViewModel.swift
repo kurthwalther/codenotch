@@ -101,8 +101,13 @@ final class NotchViewModel: ObservableObject {
     /// Where the colours change, from Settings.
     @Published var thresholds = UsageThresholds.standard
 
-    /// A soft shadow under the notch and its card, from Settings.
+    /// A soft shadow under the notch and its card, from Settings — shown
+    /// only while the pointer is on the notch or its card, so a notch left
+    /// alone lies flat.
     @Published var showsShadow = false
+    /// The pointer is on the notch, its handles or its card.
+    @Published var isPointerOn = false
+    var castsShadow: Bool { showsShadow && isPointerOn }
 
     /// How much smaller the notch draws at rest, about the point where it
     /// meets the bezel, so it stays flush.
