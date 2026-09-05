@@ -262,21 +262,18 @@ struct ProviderCell: View {
             .frame(height: NotchLayout.captionLineHeight)
     }
 
-    /// A tiny arrow and the reset time — or nothing, for a provider that
-    /// never says.
+    /// The reset time — or nothing, for a provider that never says.
     @ViewBuilder
     private var resetCaption: some View {
         if snapshot.hasReading, let resetsAt = snapshot.headline?.resetsAt {
-            HStack(spacing: Design.npx(3)) {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: Design.notchFontSize(capPixels: 10.5), weight: .semibold))
-                Text(ResetCopy.short(for: resetsAt, now: now))
-                    .font(Typography.barName)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(Palette.textBright)
-            .fixedSize()
-            .frame(height: NotchLayout.resetLineHeight)
+            // The time alone: under the window's name and its number, a
+            // time can only mean when it comes back.
+            Text(ResetCopy.short(for: resetsAt, now: now))
+                .font(Typography.barName)
+                .foregroundStyle(Palette.textBright)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(height: NotchLayout.resetLineHeight)
         } else {
             Color.clear.frame(height: NotchLayout.resetLineHeight)
         }
