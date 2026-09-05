@@ -144,22 +144,20 @@ enum NotchLayout {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 27), weight: .semibold))
     }
 
-    // A second window in the same cell. Three ways, chosen in Settings.
-    /// A ring inside the main one, Activity-rings style.
-    static var innerRingDiameter: CGFloat { Design.npx(82) }
-    static var innerRingStroke: CGFloat { Design.npx(7) }
-    /// The glyph and the activity arc make room for it.
-    static var compactGlyphSize: CGFloat { Design.npx(36) }
-    static var compactActivityDiameter: CGFloat { Design.npx(56) }
-    static var compactActivityStroke: CGFloat { Design.npx(4.5) }
-    /// A miniature bar between the ring and the percentage.
-    static var secondaryBarWidth: CGFloat { Design.npx(70) }
+    // A second window in the same cell: a miniature bar *above* the ring, so
+    // the number under the ring stays the ring's and the bar reads as the
+    // lesser gauge.
+    static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
     static var secondaryBarHeight: CGFloat { Design.npx(7) }
-    /// Whether every cell reserves room for that bar. Set alongside the style
-    /// so the stack stays uniform: cells with and without a second window
-    /// keep the same pitch, and the hover bands keep lining up with the rings.
+    static var secondaryBarGap: CGFloat { Design.npx(12) }
+    /// Whether every cell reserves room for that bar — true while any provider
+    /// has a second window, so the stack stays uniform: cells with and without
+    /// one keep the same pitch, and the hover bands keep lining up with the
+    /// rings.
     nonisolated(unsafe) static var reservesSecondaryBar = false
-    static var secondaryBarSpace: CGFloat { reservesSecondaryBar ? secondaryBarHeight : 0 }
+    static var secondaryBarSpace: CGFloat {
+        reservesSecondaryBar ? secondaryBarHeight + secondaryBarGap : 0
+    }
     /// The gap between the caption and the keep-awake handle, and inside it.
     static var orbCaptionGap: CGFloat { Design.npx(14) }
     static var orbCaptionPadding: CGFloat { Design.npx(16) }
@@ -205,10 +203,10 @@ enum NotchLayout {
         ceil(font.ascender - font.descender + font.leading)
     }
 
-    /// Ring plus its percent label — and the bar between them, when every
+    /// Ring plus its percent label — and the bar above the ring, when every
     /// cell is holding room for one.
     static var cellExtent: CGFloat {
-        ringDiameter + ringLabelGap + percentLineHeight + secondaryBarSpace
+        secondaryBarSpace + ringDiameter + ringLabelGap + percentLineHeight
     }
 
     /// What one cell claims along the stack.
@@ -254,9 +252,14 @@ enum NotchLayout {
     /// The ring leads its cell on every edge — down a side one the label
     /// follows it along the stack, across a horizontal one there is nothing
     /// else on the stack at all.
+    ///
+    /// Down a side edge the bar, when there is room for one, sits *above* the
+    /// ring inside the cell, so the ring is that much further along. Across a
+    /// horizontal edge the bar is in the depth and the ring still leads.
     static func ringCenter(index: Int, edge: NotchEdge = .right,
                            flare: CGFloat = curlRadius) -> CGFloat {
         flare + padStart(for: edge) + ringDiameter / 2
+            + (edge.isVertical ? secondaryBarSpace : 0)
             + CGFloat(index) * cellPitch(for: edge)
     }
 

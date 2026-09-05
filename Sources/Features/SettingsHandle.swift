@@ -40,6 +40,8 @@ struct SettingsOrb: View {
     /// A word or two beside the disc on hover, in its own small black pill,
     /// on the side away from the bezel. What the cup means, said outright.
     var caption: String? = nil
+    /// The notch's scale, carried as a value so a change re-renders the orb.
+    var scale: CGFloat = Design.notchFactor
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -90,15 +92,8 @@ struct SettingsOrb: View {
         Self.restingTrim(for: edge, convex: convex, atStart: atStart)
     }
 
-    /// The side of the disc away from the bezel, where the caption goes.
-    private var captionAlignment: Alignment {
-        switch edge {
-        case .right:  return .leading
-        case .left:   return .trailing
-        case .top:    return .bottom
-        case .bottom: return .top
-        }
-    }
+    /// The orb's own frame is square: the larger of its two states.
+    private var frameSide: CGFloat { arcRadius * 2 + NotchLayout.orbStroke }
 
 
 
@@ -135,11 +130,14 @@ struct SettingsOrb: View {
         // Sized to the larger of the two states, and never clipped: the arc
         // may sit well outside this frame when it has stayed back on the
         // corner the button hangs from.
-        .frame(width: arcRadius * 2 + NotchLayout.orbStroke,
-               height: arcRadius * 2 + NotchLayout.orbStroke)
-        .overlay(alignment: captionAlignment) {
+        .frame(width: frameSide, height: frameSide)
+        .overlay {
             if let caption {
-                Text(caption)
+                // Centred on the orb, with an invisible twin of the pill on the
+                // far side: the visible one then sits a gap clear of the
+                // frame's inward edge, and the orb itself never moves. Guides
+                // were tried first and left the pill on top of the cup.
+                let pill = Text(caption)
                     .font(Typography.orbCaption)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
@@ -147,24 +145,19 @@ struct SettingsOrb: View {
                     .padding(.horizontal, NotchLayout.orbCaptionPadding)
                     .padding(.vertical, NotchLayout.orbCaptionPadding * 0.5)
                     .background(Capsule().fill(Palette.notch))
-                    // Hung entirely off the inward side of the frame, a gap
-                    // clear of it, whichever way the edge faces.
-                    .alignmentGuide(captionAlignment.horizontal) { d in
-                        switch edge {
-                        case .right: return d[.trailing] + NotchLayout.orbCaptionGap
-                        case .left:  return d[.leading] - NotchLayout.orbCaptionGap
-                        default:     return d[HorizontalAlignment.center]
-                        }
+                let hole = Color.clear.frame(width: frameSide, height: frameSide)
+                let gap = NotchLayout.orbCaptionGap
+                Group {
+                    switch edge {
+                    case .right:  HStack(spacing: gap) { pill; hole; pill.hidden() }
+                    case .left:   HStack(spacing: gap) { pill.hidden(); hole; pill }
+                    case .top:    VStack(spacing: gap) { pill.hidden(); hole; pill }
+                    case .bottom: VStack(spacing: gap) { pill; hole; pill.hidden() }
                     }
-                    .alignmentGuide(captionAlignment.vertical) { d in
-                        switch edge {
-                        case .top:    return d[.top] - NotchLayout.orbCaptionGap
-                        case .bottom: return d[.bottom] + NotchLayout.orbCaptionGap
-                        default:      return d[VerticalAlignment.center]
-                        }
-                    }
-                    .opacity(isHovered ? 1 : 0)
-                    .scaleEffect(isHovered ? 1 : 0.85)
+                }
+                .fixedSize()
+                .opacity(isHovered ? 1 : 0)
+                .scaleEffect(isHovered ? 1 : 0.85)
             }
         }
         .animation(

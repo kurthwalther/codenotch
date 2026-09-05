@@ -152,10 +152,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .combineLatest(preferences.$ringWindows, preferences.$secondaryWindows)
                 .receive(on: RunLoop.main)
                 .sink { [weak controller] snapshots, rings, seconds in
+                    let chosen = snapshots.map {
+                        $0.choosingHeadline(rings[$0.id]).choosingSecondary(seconds[$0.id])
+                    }
+                    // Room for the bar is made before the cells are handed
+                    // the readings, so both arrive in one layout.
+                    controller?.apply(reservesSecondaryBar: chosen.contains { $0.secondary != nil })
                     withAnimation(NotchMotion.unfold) {
-                        controller?.model.snapshots = snapshots.map {
-                            $0.choosingHeadline(rings[$0.id]).choosingSecondary(seconds[$0.id])
-                        }
+                        controller?.model.snapshots = chosen
                     }
                     controller?.model.now = Date()
                 }
@@ -173,10 +177,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$notchScale
                 .removeDuplicates()
                 .sink { [weak controller] in controller?.apply(scale: $0) }
-                .store(in: &cancellables)
-            preferences.$secondaryStyle
-                .removeDuplicates()
-                .sink { [weak controller] in controller?.apply(secondaryStyle: $0) }
                 .store(in: &cancellables)
             store.start()
             controller.onRefresh = { [weak store] in store?.refreshNow() }

@@ -17,10 +17,10 @@ final class RingRenderTests: XCTestCase {
         return ProviderCell(snapshot: snapshot)
     }
 
-    /// The three ways of drawing a second window, side by side, each with a
-    /// busy session so the activity arc's fit can be judged too. Set
-    /// `RING_STYLES_RENDER_PATH` and the frame is written there.
-    func testTheSecondWindowLaysOutInEveryStyle() throws {
+    /// A second window's bar above the ring, beside a cell holding the slot
+    /// empty, with a busy session so the activity arc is in the picture. Set
+    /// `RING_BAR_RENDER_PATH` and the frame is written there.
+    func testTheSecondWindowLaysOutAboveTheRing() throws {
         var snapshot = ProviderSnapshot(
             id: "claude", displayName: "Claude", glyph: .claude,
             fidelity: .official, status: .ok,
@@ -37,13 +37,17 @@ final class RingRenderTests: XCTestCase {
 
         NotchLayout.reservesSecondaryBar = true
         defer { NotchLayout.reservesSecondaryBar = false }
+        let low = ProviderSnapshot(
+            id: "claude-low", displayName: "Claude", glyph: .claude,
+            fidelity: .official, status: .ok,
+            windows: [LimitWindow(id: "session", label: "Session", usedFraction: 0.30),
+                      LimitWindow(id: "weekly_scoped", label: "Fable", usedFraction: 0.85)],
+            headlineID: "session", secondaryID: "weekly_scoped"
+        )
         let view = HStack(alignment: .top, spacing: 40) {
-            ForEach(SecondaryStyle.allCases) { style in
-                VStack(spacing: 24) {
-                    ProviderCell(snapshot: snapshot, activity: busy, secondaryStyle: style)
-                    ProviderCell(snapshot: plain, secondaryStyle: style)
-                }
-            }
+            ProviderCell(snapshot: snapshot, activity: busy, reservesBar: true)
+            ProviderCell(snapshot: low, reservesBar: true)
+            ProviderCell(snapshot: plain, reservesBar: true)
         }
         .padding(30)
         .background(Palette.notch)
@@ -53,7 +57,7 @@ final class RingRenderTests: XCTestCase {
         let image = try XCTUnwrap(renderer.nsImage)
         XCTAssertGreaterThan(image.size.width, NotchLayout.ringDiameter * 3)
 
-        if let path = ProcessInfo.processInfo.environment["RING_STYLES_RENDER_PATH"] {
+        if let path = ProcessInfo.processInfo.environment["RING_BAR_RENDER_PATH"] {
             let tiff = try XCTUnwrap(image.tiffRepresentation)
             let png = try XCTUnwrap(NSBitmapImageRep(data: tiff)?
                 .representation(using: .png, properties: [:]))

@@ -112,11 +112,11 @@ final class NotchWindowController {
         relayout()
     }
 
-    /// How a second window is drawn. The bar is the one style that changes
-    /// the cell's height, and it does so for every cell at once.
-    func apply(secondaryStyle: SecondaryStyle) {
-        NotchLayout.reservesSecondaryBar = secondaryStyle == .bar
-        model.secondaryStyle = secondaryStyle
+    /// Whether every cell holds room for a second window's bar. Changes the
+    /// cell's height, for every cell at once, so the panel is re-placed.
+    func apply(reservesSecondaryBar: Bool) {
+        guard NotchLayout.reservesSecondaryBar != reservesSecondaryBar else { return }
+        NotchLayout.reservesSecondaryBar = reservesSecondaryBar
         relayout()
     }
 

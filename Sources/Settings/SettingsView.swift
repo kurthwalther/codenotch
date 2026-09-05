@@ -85,19 +85,8 @@ struct SettingsView: View {
                         .frame(width: 40, alignment: .trailing)
                         .foregroundStyle(.secondary)
                 }
-                Text("Rings, numbers and handles only — the card you hover for "
-                     + "keeps its size.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Picker("Second window", selection: $preferences.secondaryStyle) {
-                    ForEach(SecondaryStyle.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-
-                Text(preferences.secondaryStyle.explanation
-                     + " Choose which window, per provider, under Integrations.")
+                Text("Rings, glyphs, numbers, bars and handles — the card you hover "
+                     + "for keeps its size.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -217,7 +206,7 @@ struct SettingsView: View {
     static let width: CGFloat = 500
     /// Tall enough that Startup and Updates are visible without scrolling —
     /// four account rows push everything below them a long way down.
-    static let height: CGFloat = 720
+    static let height: CGFloat = 680
 
     /// Says the one thing people will try and find does not work. A power
     /// assertion is exactly what Caffeine and Amphetamine hold, and it stops
@@ -365,7 +354,7 @@ private struct AccountRow: View {
         }
     }
 
-    /// A second window to show beside the ring's, or none.
+    /// A second window, drawn as a small bar above the ring, or none.
     private var secondaryPicker: some View {
         HStack(spacing: 8) {
             Text("Second window")

@@ -26,16 +26,13 @@ struct ProviderRing: View {
     var activity: ActivitySummary?
     /// A fetch this cell asked for, in flight.
     var isRefreshing: Bool = false
-    /// A second window, drawn inside the ring in one of two ways; the third
-    /// way, the bar, lives in the cell rather than the ring.
-    var secondary: SecondaryReading?
-    var secondaryStyle: SecondaryStyle = .innerRing
+    /// The notch's scale, carried as a value: every size here is read from
+    /// `NotchLayout` at render time, and SwiftUI only renders again when
+    /// something it was *given* has changed.
+    var scale: CGFloat = Design.notchFactor
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spin: Double = 0
-
-    /// The inner ring takes the room the glyph and the activity arc had.
-    private var isCompact: Bool { secondary != nil && secondaryStyle == .innerRing }
 
     private var band: UsageBand {
         isBlocked ? .exhausted : UsageBand.band(for: usedFraction ?? 0)
@@ -56,18 +53,6 @@ struct ProviderRing: View {
             // working right now is known first-hand and stays at full strength
             // even when the percentage behind it has gone stale.
             ZStack {
-                // The level: a tint rising inside the track, under everything.
-                if let secondary, secondaryStyle == .level {
-                    let inside = NotchLayout.ringDiameter - 2 * NotchLayout.trackStroke
-                    Circle()
-                        .fill(secondary.band.color.opacity(0.22))
-                        .frame(width: inside, height: inside)
-                        .mask(alignment: .bottom) {
-                            Rectangle().frame(height: inside * CGFloat(secondary.remaining))
-                        }
-                        .animation(NotchMotion.reading, value: secondary)
-                }
-
                 Circle()
                     .strokeBorder(trackColor, lineWidth: NotchLayout.trackStroke)
                     .animation(NotchMotion.reading, value: band)
@@ -91,27 +76,7 @@ struct ProviderRing: View {
                         .animation(NotchMotion.reading, value: band)
                 }
 
-                // The inner ring: a second gauge on the same axis, thinner so
-                // the eye reads it second.
-                if let secondary, secondaryStyle == .innerRing {
-                    Circle()
-                        .stroke(Palette.ringTrack, lineWidth: NotchLayout.innerRingStroke)
-                        .frame(width: NotchLayout.innerRingDiameter, height: NotchLayout.innerRingDiameter)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(secondary.remaining))
-                        .stroke(
-                            secondary.band.color,
-                            style: StrokeStyle(lineWidth: NotchLayout.innerRingStroke, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: NotchLayout.innerRingDiameter, height: NotchLayout.innerRingDiameter)
-                        .animation(NotchMotion.reading, value: secondary)
-                }
-
-                ProviderGlyphView(
-                    glyph: glyph,
-                    size: isCompact ? NotchLayout.compactGlyphSize : NotchLayout.glyphSize
-                )
+                ProviderGlyphView(glyph: glyph, size: NotchLayout.glyphSize)
                     .foregroundStyle(Palette.textPrimary)
                     // A spent limit dims its glyph so the ring reads as "waiting".
                     .opacity(band == .exhausted ? 0.35 : 1)
@@ -119,7 +84,7 @@ struct ProviderRing: View {
             .opacity(isStale ? 0.45 : 1)
 
             if let activity, activity.state != .idle {
-                ActivityArc(summary: activity, compact: isCompact)
+                ActivityArc(summary: activity, scale: scale)
             }
         }
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
@@ -152,8 +117,8 @@ struct ProviderRing: View {
 /// full pulsing ring when something is blocked waiting on you.
 private struct ActivityArc: View {
     let summary: ActivitySummary
-    /// Drawn smaller and finer when an inner ring has taken its room.
-    var compact: Bool = false
+    /// See `ProviderRing.scale`.
+    var scale: CGFloat = Design.notchFactor
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spinning = false
@@ -162,13 +127,10 @@ private struct ActivityArc: View {
     /// How much of the circle the moving arc covers.
     private let arcFraction: CGFloat = 0.25
 
-    private var diameter: CGFloat {
-        compact ? NotchLayout.compactActivityDiameter : NotchLayout.activityDiameter
+    private var stroke: CGFloat { NotchLayout.activityStroke }
+    private var inset: CGFloat {
+        (NotchLayout.ringDiameter - NotchLayout.activityDiameter) / 2
     }
-    private var stroke: CGFloat {
-        compact ? NotchLayout.compactActivityStroke : NotchLayout.activityStroke
-    }
-    private var inset: CGFloat { (NotchLayout.ringDiameter - diameter) / 2 }
 
     var body: some View {
         Group {
@@ -214,19 +176,20 @@ private struct ActivityArc: View {
     }
 }
 
-/// A ring and the percent *left* underneath it — with, between the two, the
-/// second window's bar when that is the style and every cell holds room for
-/// it. Above the number rather than below, so the number stays the ring's.
+/// A ring and the percent *left* underneath it — and, above the ring, the
+/// second window's bar while any provider has one. Above rather than between
+/// ring and number, so the number stays unmistakably the ring's and the bar
+/// reads as the lesser gauge.
 struct ProviderCell: View {
     let snapshot: ProviderSnapshot
     var activity: ActivitySummary?
     var isRefreshing: Bool = false
-    var secondaryStyle: SecondaryStyle = .innerRing
+    /// The bar's slot is held whether or not this cell fills it.
+    var reservesBar: Bool = NotchLayout.reservesSecondaryBar
+    /// See `ProviderRing.scale`.
+    var scale: CGFloat = Design.notchFactor
 
     private var secondary: SecondaryReading? { snapshot.secondaryReading }
-
-    /// The bar's slot is held whether or not this cell fills it.
-    private var reservesBar: Bool { NotchLayout.reservesSecondaryBar }
 
     /// A dash, not "0%": nothing read is not the same as nothing used.
     private var percentText: String {
@@ -235,6 +198,11 @@ struct ProviderCell: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if reservesBar {
+                secondaryBar
+                    .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
+                    .padding(.bottom, NotchLayout.secondaryBarGap)
+            }
             ProviderRing(
                 usedFraction: snapshot.hasReading ? snapshot.ringFraction : nil,
                 glyph: snapshot.glyph,
@@ -242,16 +210,8 @@ struct ProviderCell: View {
                 isBlocked: snapshot.block != nil,
                 activity: activity,
                 isRefreshing: isRefreshing,
-                secondary: secondaryStyle == .bar ? nil : secondary,
-                secondaryStyle: secondaryStyle
+                scale: scale
             )
-            if reservesBar {
-                // The bar sits in the gap the label already keeps, which
-                // grows by exactly the bar's height — see `cellExtent`.
-                secondaryBar
-                    .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
-                    .padding(.top, NotchLayout.ringLabelGap * 0.45)
-            }
             Text(percentText)
                 .font(Typography.percent)
                 .foregroundStyle(Palette.textPrimary)
@@ -263,17 +223,16 @@ struct ProviderCell: View {
                 .frame(height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
-                .padding(.top, reservesBar ? NotchLayout.ringLabelGap * 0.55 : NotchLayout.ringLabelGap)
+                .padding(.top, NotchLayout.ringLabelGap)
         }
         .frame(height: NotchLayout.cellExtent)
     }
 
-    /// Filled when this cell has a second window in the bar style, an empty
-    /// slot otherwise — never an empty *track*, which would read as a reading
-    /// of nothing.
+    /// Filled when this cell has a second window, an empty slot otherwise —
+    /// never an empty *track*, which would read as a reading of nothing.
     @ViewBuilder
     private var secondaryBar: some View {
-        if secondaryStyle == .bar, let secondary {
+        if let secondary {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Palette.barTrack)

@@ -57,10 +57,9 @@ final class NotchViewModel: ObservableObject {
         return isHoldingAwake ? "Keeping awake" : "No agents running"
     }
 
-    /// How a second window is drawn in a cell, from Settings.
-    @Published var secondaryStyle: SecondaryStyle = .innerRing
     /// Bumped whenever a measurement behind the layout changes — the notch's
-    /// scale, or room for the bar — so the views re-read `NotchLayout`.
+    /// scale, or room for the bar — so the root view's body runs again and
+    /// hands the new values down.
     @Published var layoutVersion = 0
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.

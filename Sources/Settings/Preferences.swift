@@ -61,11 +61,6 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(secondaryWindows, forKey: Keys.secondaryWindows) }
     }
 
-    /// How that second window is drawn.
-    @Published var secondaryStyle: SecondaryStyle {
-        didSet { defaults.set(secondaryStyle.rawValue, forKey: Keys.secondaryStyle) }
-    }
-
     /// How big the notch is, as a share of the design frame's size. The
     /// tooltip is not affected.
     @Published var notchScale: Double {
@@ -99,7 +94,6 @@ final class Preferences: ObservableObject {
         static let keepDisplay = "keepDisplayAwake"
         static let ringWindows = "ringWindows"
         static let secondaryWindows = "secondaryWindows"
-        static let secondaryStyle = "secondaryStyle"
         static let notchScale = "notchScale"
     }
 
@@ -165,8 +159,6 @@ final class Preferences: ObservableObject {
         self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
         self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
         self.secondaryWindows = defaults.dictionary(forKey: Keys.secondaryWindows) as? [String: String] ?? [:]
-        self.secondaryStyle = defaults.string(forKey: Keys.secondaryStyle)
-            .flatMap(SecondaryStyle.init(rawValue:)) ?? .innerRing
         // Smaller than the frame by default: the notch carries a ring, a
         // glyph and a number, and at the frame's size it was more furniture
         // than reading. Absent means never chosen.

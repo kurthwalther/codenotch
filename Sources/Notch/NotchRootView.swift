@@ -23,7 +23,8 @@ struct NotchRootView: View {
                     SettingsOrb(isHovered: model.isHoveringSettings, edge: model.edge,
                                     convex: model.orbHugsCorner,
                                     arcRadius: model.orbArcRadius,
-                                    arcOffset: model.orbArcOffset)
+                                    arcOffset: model.orbArcOffset,
+                                    scale: Design.notchFactor)
                         .position(orbCentre(place))
                         // Outward, into the black — not inward to nothing.
                         .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
@@ -48,7 +49,8 @@ struct NotchRootView: View {
                                 spin: 0,
                                 tint: model.awakeTint,
                                 dim: model.awakeDim,
-                                caption: model.awakeCaption)
+                                caption: model.awakeCaption,
+                                scale: Design.notchFactor)
                         .position(awakeCentre(place))
                         .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
                         .opacity(model.isExpanded ? 1 : 0)
@@ -131,7 +133,10 @@ struct NotchRootView: View {
                 snapshot: snapshot,
                 activity: model.activity(for: snapshot.id),
                 isRefreshing: model.refreshing.contains(snapshot.id),
-                secondaryStyle: model.secondaryStyle
+                // Read here, in a body that `layoutVersion` re-runs, and
+                // handed down as values — so a change reaches the cells.
+                reservesBar: NotchLayout.reservesSecondaryBar,
+                scale: Design.notchFactor
             )
                 // Pinned to what the cell claims along the stack, or the drawn
                 // rings stop lining up with the centres `ringCenter` hands to

@@ -41,12 +41,10 @@ final class SecondaryWindowTests: XCTestCase {
         defaults.removePersistentDomain(forName: name)
         let first = Preferences(defaults: defaults)
         first.setSecondaryWindow("weekly_scoped", for: "claude")
-        first.secondaryStyle = .bar
         first.notchScale = 0.7
 
         let second = Preferences(defaults: defaults)
         XCTAssertEqual(second.secondaryWindow(for: "claude"), "weekly_scoped")
-        XCTAssertEqual(second.secondaryStyle, .bar)
         XCTAssertEqual(second.notchScale, 0.7, accuracy: 0.0001)
     }
 
@@ -57,16 +55,27 @@ final class SecondaryWindowTests: XCTestCase {
         XCTAssertEqual(Preferences(defaults: defaults).notchScale, 0.8, accuracy: 0.0001)
     }
 
-    /// The bar style claims its height from every cell, so the stack keeps
-    /// one pitch and the hover bands keep lining up with the rings.
-    func testTheBarStyleReservesRoomInEveryCell() {
-        let before = NotchLayout.cellExtent
+    /// The bar claims its room from every cell, so the stack keeps one pitch
+    /// and the hover bands keep lining up with the rings — which have moved
+    /// along by the bar, since it sits above them.
+    func testTheBarReservesRoomInEveryCellAboveTheRing() {
+        let extent = NotchLayout.cellExtent
+        let ring = NotchLayout.ringCenter(index: 0, edge: .right)
+        let acrossRing = NotchLayout.ringCenter(index: 0, edge: .top)
+        let depth = NotchLayout.bodyDepth(for: .top)
         NotchLayout.reservesSecondaryBar = true
         defer { NotchLayout.reservesSecondaryBar = false }
-        XCTAssertEqual(NotchLayout.cellExtent - before, NotchLayout.secondaryBarHeight, accuracy: 0.001)
-        XCTAssertEqual(NotchLayout.bodyDepth(for: .top) - NotchLayout.bodyDepth(for: .right),
-                       NotchLayout.cellExtent - NotchLayout.sideBodyDepth + 2 * ((NotchLayout.sideBodyDepth - NotchLayout.ringDiameter) / 2),
-                       accuracy: 0.001, "a horizontal notch grows by the same bar")
+
+        let space = NotchLayout.secondaryBarHeight + NotchLayout.secondaryBarGap
+        XCTAssertEqual(NotchLayout.cellExtent - extent, space, accuracy: 0.001)
+        XCTAssertEqual(NotchLayout.ringCenter(index: 0, edge: .right) - ring, space, accuracy: 0.001,
+                       "down a side edge the ring follows the bar")
+        XCTAssertEqual(NotchLayout.ringCenter(index: 0, edge: .top), acrossRing, accuracy: 0.001,
+                       "across a horizontal edge the bar is in the depth, not along the stack")
+        XCTAssertEqual(NotchLayout.bodyDepth(for: .top) - depth, space, accuracy: 0.001,
+                       "and the depth grows by it instead")
+        XCTAssertEqual(NotchLayout.bodyDepth(for: .right), NotchLayout.sideBodyDepth, accuracy: 0.001,
+                       "a side notch keeps the frame's depth")
     }
 
     /// The notch's own scale moves every notch measurement and none of the
