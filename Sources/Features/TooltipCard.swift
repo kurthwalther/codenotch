@@ -226,8 +226,8 @@ private struct StatusRing: View {
 
 // MARK: - Providers
 
-/// One metered window: label and reset copy on a line, a track bar, then the
-/// percentage burned.
+/// One metered window: label and reset copy on a line, a track bar showing
+/// what is *left*, then both ends of the figure in words.
 private struct LimitWindowRow: View {
     let window: LimitWindow
     let fidelity: Fidelity
@@ -235,8 +235,12 @@ private struct LimitWindowRow: View {
 
     private var band: UsageBand { UsageBand.band(for: window.usedFraction ?? 0) }
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding }
+    /// The bar is the room you still have, and it empties as you spend it —
+    /// the same reading as the ring, so the two never pull opposite ways.
+    /// Never narrower than it is tall, so nothing left is still a dot of
+    /// colour rather than a bar that has vanished.
     private var fillWidth: CGFloat {
-        let fraction = CGFloat(min(max(window.usedFraction ?? 0, 0), 1))
+        let fraction = CGFloat(min(max(window.remainingFraction ?? 0, 0), 1))
         return max(NotchLayout.barHeight, trackWidth * fraction)
     }
 

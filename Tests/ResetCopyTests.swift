@@ -106,16 +106,15 @@ final class ResetCopyDistantDateTests: XCTestCase {
 
 /// Vendors disagree on which end of the figure to show — Codex writes "87%
 /// remaining", Claude writes a percentage used. A notch that picks one side
-/// makes the user convert in their head, and "12% Used" beside Codex's own
-/// "87% remaining" reads as two different numbers rather than one seen from
-/// either end. That is what made a correct reading look wrong.
+/// makes the user convert in their head, so both ends are shown, what is left
+/// first: that is what the bar above the line is drawn as.
 final class WindowSummaryTests: XCTestCase {
     private func window(_ fraction: Double) -> LimitWindow {
         LimitWindow(id: "w", label: "Monthly limit", usedFraction: fraction)
     }
 
     func testItShowsBothEndsOfTheSameFigure() {
-        XCTAssertEqual(window(0.12).summary, "12% Used · 88% left")
+        XCTAssertEqual(window(0.12).summary, "88% left · 12% used")
     }
 
     /// The two halves must always agree, or the line contradicts itself.
@@ -130,7 +129,7 @@ final class WindowSummaryTests: XCTestCase {
 
     /// A limit can be reported past full; "-4% left" would be nonsense.
     func testAnOverspentLimitNeverGoesNegative() {
-        XCTAssertEqual(window(1.04).summary, "104% Used · 0% left")
+        XCTAssertEqual(window(1.04).summary, "0% left · 104% used")
     }
 
     /// Counts have no denominator, so they keep their own wording.

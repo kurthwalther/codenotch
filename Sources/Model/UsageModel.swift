@@ -53,17 +53,22 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.resetsAt = resetsAt
     }
 
+    /// What is left of the window, 0...1 — the figure the bar and the ring are
+    /// drawn from. Never negative: a limit can be reported past full.
+    var remainingFraction: Double? {
+        usedFraction.map { max(0, 1 - $0) }
+    }
+
     /// What the tooltip says on the line under the bar.
     var summary: String {
         if let usedFraction {
-            // Both ends of the same figure. Vendors do not agree on which to
-            // show — Codex writes "87% remaining", Claude writes "% used" — so
-            // a notch that picks one side leaves the user converting in their
-            // head, and "12% Used" beside Codex's "87% remaining" reads as two
-            // different numbers rather than one seen from either end. That is
-            // what made a correct reading look wrong.
+            // Both ends of the same figure, what is left first. Vendors do not
+            // agree on which to show — Codex writes "87% remaining", Claude
+            // writes "% used" — so a notch that picks one side leaves the user
+            // converting in their head. Leading with what is left matches the
+            // bar above it, which is drawn as the room you still have.
             let used = Int((usedFraction * 100).rounded())
-            return "\(used)% Used · \(max(0, 100 - used))% left"
+            return "\(max(0, 100 - used))% left · \(used)% used"
         }
         if let remaining {
             return remaining == 1 ? "1 left" : "\(remaining) left"
@@ -136,9 +141,17 @@ struct ProviderSnapshot: Identifiable, Equatable {
 
     var usedFraction: Double? { headline?.usedFraction }
 
-    /// What the cell prints under the ring.
+    /// What is left of the headline window — the figure the ring is drawn from.
+    var remainingFraction: Double? { headline?.remainingFraction }
+
+    /// What the cell prints under the ring: what is *left*, matching the arc.
+    /// Rounded from the used figure so the number here and the two halves in
+    /// the tooltip can never disagree by one.
     var headlineText: String {
-        if let usedFraction { return "\(Int((usedFraction * 100).rounded()))%" }
+        if let usedFraction {
+            let used = Int((usedFraction * 100).rounded())
+            return "\(max(0, 100 - used))%"
+        }
         if let remaining = headline?.remaining { return "\(remaining)" }
         if let used = headline?.used { return "\(used)" }
         return "—"
@@ -148,7 +161,9 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// a dash rather than an authoritative-looking 0%.
     var hasReading: Bool { !windows.isEmpty }
 
-    /// A ring can only be drawn when the provider said what the limit was.
+    /// The ring's input, nil when the provider never said what the limit was
+    /// — a ring can only be drawn against a denominator. The ring itself
+    /// draws what is *left* of this.
     var ringFraction: Double? { usedFraction }
 
     /// Signing in means something different per provider, so the prompt has to

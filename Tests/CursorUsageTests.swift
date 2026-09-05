@@ -32,7 +32,7 @@ final class CursorUsageTests: XCTestCase {
         XCTAssertEqual(w[0].id, "included")
         XCTAssertEqual(w[0].label, "Included usage")
         XCTAssertEqual(w[0].usedFraction ?? -1, 0.095, accuracy: 0.0001)
-        XCTAssertEqual(w[0].summary, "10% Used · 90% left",
+        XCTAssertEqual(w[0].summary, "90% left · 10% used",
                        "should round the way Cursor does, and show both ends")
     }
 

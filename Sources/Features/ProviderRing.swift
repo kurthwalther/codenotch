@@ -1,7 +1,13 @@
 import SwiftUI
 
 /// The ring around a provider glyph: a grey track with a coloured arc that
-/// starts at 12 o'clock and sweeps clockwise by the fraction used.
+/// starts at 12 o'clock and sweeps clockwise by the fraction *left*.
+///
+/// What is left, not what is gone: a full ring is an untouched limit, and it
+/// empties as you spend it, the way a battery does. Drawn the other way round
+/// a nearly-full ring meant nearly out, which is the opposite of what a full
+/// shape says to the eye. The colour still keys on how much has gone — green
+/// with plenty left, red with little — so the two readings agree.
 ///
 /// When that provider is doing something right now, a second, much thinner arc
 /// appears *inside* the ring, in the gap between the glyph and the track. It is
@@ -27,7 +33,15 @@ struct ProviderRing: View {
     private var band: UsageBand {
         isBlocked ? .exhausted : UsageBand.band(for: usedFraction ?? 0)
     }
-    private var sweep: CGFloat { CGFloat(min(max(usedFraction ?? 0, 0), 1)) }
+    /// How much of the circle the arc covers: what is left. Blocked keeps the
+    /// arc — the number under it is still true — and says "paused" with the
+    /// colour and the dimmed glyph instead, so the two never contradict.
+    private var sweep: CGFloat { 1 - CGFloat(min(max(usedFraction ?? 0, 0), 1)) }
+    /// The track turns faintly red once nothing is left, so an empty ring still
+    /// reads as an alarm rather than as no reading at all.
+    private var trackColor: Color {
+        band == .exhausted ? Palette.critical.opacity(0.35) : Palette.ringTrack
+    }
 
     var body: some View {
         ZStack {
@@ -36,7 +50,8 @@ struct ProviderRing: View {
             // even when the percentage behind it has gone stale.
             ZStack {
                 Circle()
-                    .strokeBorder(Palette.ringTrack, lineWidth: NotchLayout.trackStroke)
+                    .strokeBorder(trackColor, lineWidth: NotchLayout.trackStroke)
+                    .animation(NotchMotion.reading, value: band)
 
                 if usedFraction != nil {
                     Circle()
@@ -154,7 +169,7 @@ private struct ActivityArc: View {
     }
 }
 
-/// A ring and the percent burned underneath it.
+/// A ring and the percent *left* underneath it.
 struct ProviderCell: View {
     let snapshot: ProviderSnapshot
     var activity: ActivitySummary?

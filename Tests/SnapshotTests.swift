@@ -33,6 +33,21 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(s.headline?.id, s.windows.first?.id)
     }
 
+    /// The ring and the label say what is *left*: a session 73% through reads
+    /// 27%, and the arc is drawn from the same figure.
+    func testHeadlineReadsWhatIsLeft() {
+        let s = snapshot([window("session", 0.73)])
+        XCTAssertEqual(s.headlineText, "27%")
+        XCTAssertEqual(s.remainingFraction ?? -1, 0.27, accuracy: 0.0001)
+    }
+
+    /// Past full there is nothing left — not a negative amount of it.
+    func testOverspentReadsAsNothingLeft() {
+        let s = snapshot([window("session", 1.04)])
+        XCTAssertEqual(s.headlineText, "0%")
+        XCTAssertEqual(s.remainingFraction ?? -1, 0, accuracy: 0.0001)
+    }
+
     /// No windows is not "nothing used" — it is "nothing known", and the cell
     /// prints a dash rather than a confident zero.
     func testNoWindowsReadsAsNoReading() {
