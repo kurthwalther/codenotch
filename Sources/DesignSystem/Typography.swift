@@ -14,6 +14,11 @@ enum Typography {
         Font.system(size: Design.notchFontSize(capPixels: 16), weight: .medium)
     }
 
+    /// The quieter line under it.
+    static var orbDetail: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 13), weight: .regular)
+    }
+
     /// "Claude Usage". Cap height 26px.
     static let cardTitle = Font.system(size: Design.fontSize(capPixels: 26), weight: .semibold)
 

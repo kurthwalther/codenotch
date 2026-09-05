@@ -69,11 +69,22 @@ final class NotchViewModel: ObservableObject {
     }
     var awakeGlows: Bool { keepAwakeMode == .whileOpen && isHoldingAwake }
     var awakeDim: Bool { keepAwakeMode.isOn && !isHoldingAwake }
+    /// The rule the handle is set to, in words — what a click just chose.
     var awakeCaption: String {
         switch keepAwakeMode {
         case .off:          return "Off"
-        case .whileWorking: return isHoldingAwake ? "Keeping awake" : "No agents running"
-        case .whileOpen:    return isHoldingAwake ? "Keeping awake" : "No sessions open"
+        case .whileWorking: return "Awake while agents work"
+        case .whileOpen:    return "Awake while sessions open"
+        }
+    }
+
+    /// And what that rule is doing right now, under it. Nothing for off: the
+    /// Mac sleeps as it always has, and there is nothing to report.
+    var awakeDetail: String? {
+        switch keepAwakeMode {
+        case .off:          return nil
+        case .whileWorking: return isHoldingAwake ? "Holding now" : "None running, may sleep"
+        case .whileOpen:    return isHoldingAwake ? "Holding now" : "None open, may sleep"
         }
     }
 

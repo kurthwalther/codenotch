@@ -75,24 +75,27 @@ final class AwakeOrbTests: XCTestCase {
         m.keepAwakeMode = .off
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer")
         XCTAssertEqual(m.awakeCaption, "Off")
+        XCTAssertNil(m.awakeDetail, "nothing to report about a Mac left to itself")
         XCTAssertFalse(m.awakeDim)
         XCTAssertFalse(m.awakeGlows)
 
         m.keepAwakeMode = .whileWorking
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
-        XCTAssertEqual(m.awakeCaption, "No agents running")
+        XCTAssertEqual(m.awakeCaption, "Awake while agents work", "the rule, not just the state")
+        XCTAssertEqual(m.awakeDetail, "None running, may sleep")
         XCTAssertTrue(m.awakeDim, "on with nothing to hold is shown faded")
 
         m.isHoldingAwake = true
-        XCTAssertEqual(m.awakeCaption, "Keeping awake")
+        XCTAssertEqual(m.awakeDetail, "Holding now")
         XCTAssertFalse(m.awakeDim)
         XCTAssertFalse(m.awakeGlows, "only the steaming cup glows")
 
         m.keepAwakeMode = .whileOpen
         XCTAssertEqual(m.awakeSymbol, "cup.and.heat.waves.fill")
+        XCTAssertEqual(m.awakeCaption, "Awake while sessions open")
         XCTAssertTrue(m.awakeGlows)
         m.isHoldingAwake = false
-        XCTAssertEqual(m.awakeCaption, "No sessions open", "while open, it is sessions that are missing")
+        XCTAssertEqual(m.awakeDetail, "None open, may sleep", "while open, it is sessions that are missing")
         XCTAssertFalse(m.awakeGlows)
     }
 }

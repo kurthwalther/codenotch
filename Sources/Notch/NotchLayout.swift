@@ -147,7 +147,7 @@ enum NotchLayout {
     // A second window in the same cell: a miniature bar *above* the ring, so
     // the number under the ring stays the ring's and the bar reads as the
     // lesser gauge.
-    static var secondaryBarWidth: CGFloat { ringDiameter * 0.52 }
+    static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with

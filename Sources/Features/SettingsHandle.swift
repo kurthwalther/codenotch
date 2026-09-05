@@ -42,6 +42,8 @@ struct SettingsOrb: View {
     /// A word or two beside the disc on hover, in its own small black pill,
     /// on the side away from the bezel. What the cup means, said outright.
     var caption: String? = nil
+    /// A quieter second line under it: what that means right now.
+    var detail: String? = nil
     /// The notch's scale, carried as a value so a change re-renders the orb.
     var scale: CGFloat = Design.notchFactor
 
@@ -97,6 +99,15 @@ struct SettingsOrb: View {
     /// The orb's own frame is square: the larger of its two states.
     private var frameSide: CGFloat { arcRadius * 2 + NotchLayout.orbStroke }
 
+    /// The pill's lines line up on the side nearest the orb.
+    private var captionTextAlignment: HorizontalAlignment {
+        switch edge {
+        case .right: return .trailing
+        case .left:  return .leading
+        default:     return .center
+        }
+    }
+
 
 
     var body: some View {
@@ -141,14 +152,24 @@ struct SettingsOrb: View {
                 // far side: the visible one then sits a gap clear of the
                 // frame's inward edge, and the orb itself never moves. Guides
                 // were tried first and left the pill on top of the cup.
-                let pill = Text(caption)
-                    .font(Typography.orbCaption)
-                    .foregroundStyle(Palette.textPrimary)
+                let pill = VStack(alignment: captionTextAlignment, spacing: Design.npx(3)) {
+                    Text(caption)
+                        .font(Typography.orbCaption)
+                        .foregroundStyle(Palette.textPrimary)
+                    if let detail {
+                        Text(detail)
+                            .font(Typography.orbDetail)
+                            .foregroundStyle(Palette.textSecondary)
+                    }
+                }
                     .lineLimit(1)
                     .fixedSize()
                     .padding(.horizontal, NotchLayout.orbCaptionPadding)
-                    .padding(.vertical, NotchLayout.orbCaptionPadding * 0.5)
-                    .background(Capsule().fill(Palette.notch))
+                    .padding(.vertical, NotchLayout.orbCaptionPadding * 0.55)
+                    .background(
+                        RoundedRectangle(cornerRadius: NotchLayout.orbCaptionPadding, style: .continuous)
+                            .fill(Palette.notch)
+                    )
                 let hole = Color.clear.frame(width: frameSide, height: frameSide)
                 let gap = NotchLayout.orbCaptionGap
                 Group {

@@ -51,6 +51,7 @@ struct NotchRootView: View {
                                 dim: model.awakeDim,
                                 glow: model.awakeGlows,
                                 caption: model.awakeCaption,
+                                detail: model.awakeDetail,
                                 scale: Design.notchFactor)
                         .position(awakeCentre(place))
                         .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)

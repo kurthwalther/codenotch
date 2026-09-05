@@ -9,26 +9,26 @@ final class OrbRenderTests: XCTestCase {
     func testTheHandlesLayOutOnEveryEdge() throws {
         let view = VStack(spacing: 30) {
             ForEach(NotchEdge.allCases) { edge in
-                HStack(spacing: 60) {
+                HStack(spacing: 90) {
                     Text(edge.title).frame(width: 60, alignment: .leading)
                     SettingsOrb(isHovered: true, edge: edge)
-                        .frame(width: 140, height: 90)
+                        .frame(width: 150, height: 110)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer.fill",
                                 atStart: true, spin: 0, tint: Palette.cappuccino,
-                                caption: "Keeping awake")
-                        .frame(width: 140, height: 90)
+                                caption: "Awake while agents work", detail: "Holding now")
+                        .frame(width: 150, height: 110)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer.fill",
                                 atStart: true, spin: 0, tint: Palette.cappuccino, dim: true,
-                                caption: "No agents running")
-                        .frame(width: 140, height: 90)
+                                caption: "Awake while agents work", detail: "None running, may sleep")
+                        .frame(width: 150, height: 110)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer",
                                 atStart: true, spin: 0, tint: Palette.textSecondary,
                                 caption: "Off")
-                        .frame(width: 140, height: 90)
+                        .frame(width: 150, height: 110)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.heat.waves.fill",
                                 atStart: true, spin: 0, tint: Palette.espresso, glow: true,
-                                caption: "Keeping awake")
-                        .frame(width: 140, height: 90)
+                                caption: "Awake while sessions open", detail: "Holding now")
+                        .frame(width: 150, height: 110)
                 }
             }
         }
