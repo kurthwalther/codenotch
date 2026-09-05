@@ -66,7 +66,8 @@ struct SettingsView: View {
 
                 Toggle("Shadow", isOn: $preferences.notchShadow)
                 Text("A soft shadow under the notch and its card while the pointer is "
-                     + "on them, the way a panel floating a little off the screen casts one.")
+                     + "on them, or a note or conversation beside them is open — the way "
+                     + "a panel floating a little off the screen casts one.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -181,8 +182,9 @@ struct SettingsView: View {
                 }
                 Text("A small card beside the notch with the agent's name and the "
                      + "start of what it last said, whether the notch is shown, on "
-                     + "hover or hidden. It stays while the pointer is on it; a "
-                     + "click takes you to the session.")
+                     + "hover or hidden. A \"done\" stays this long, or while the "
+                     + "pointer is on it; a \"needs you\" stays until you act on it. "
+                     + "A click opens the conversation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -263,6 +263,10 @@ final class ShadowTests: XCTestCase {
         XCTAssertTrue(m.castsShadow)
         m.showsShadow = false
         XCTAssertFalse(m.castsShadow)
+        m.showsShadow = true
+        m.isPointerOn = false
+        m.isAttendedElsewhere = true
+        XCTAssertTrue(m.castsShadow, "a note or conversation beside it counts")
     }
 
     func testTheSliderReachesElevenTenths() {

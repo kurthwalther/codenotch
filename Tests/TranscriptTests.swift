@@ -131,6 +131,21 @@ final class SessionNoticeTests: XCTestCase {
         XCTAssertTrue(center.notices.isEmpty)
     }
 
+    /// A "needs you" is not on the clock: it goes when you act, or when the
+    /// session stops waiting on its own.
+    func testANeedsYouStaysUntilItIsAnswered() {
+        let center = SessionNoticeCenter()
+        center.lastWords = { _ in "words" }
+        let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+        center.observe(["claude": [session("a", .busy)]], now: t0)
+        center.observe(["claude": [session("a", .waiting, waitingFor: "Approve")]], now: t0)
+        XCTAssertEqual(center.notices.first?.kind, .waiting)
+        center.expire(after: 7, now: t0.addingTimeInterval(600), holding: false)
+        XCTAssertEqual(center.notices.count, 1, "ten minutes on, still there")
+        center.observe(["claude": [session("a", .busy)]], now: t0.addingTimeInterval(601))
+        XCTAssertTrue(center.notices.isEmpty, "the session went back to work: the note goes")
+    }
+
     func testTheCardSitsBesideTheNotch() {
         let screen = CGRect(x: 0, y: 0, width: 1728, height: 1117)
         let usable = CGRect(x: 0, y: 0, width: 1728, height: 1080)

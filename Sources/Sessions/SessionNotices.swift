@@ -61,6 +61,7 @@ final class SessionNoticeCenter: ObservableObject {
         var states: [String: AgentSession.State] = [:]
         for session in all { states[session.id] = session.state }
         defer { statesBefore = states }
+        settle(sessions)
         guard enabled else { return }
 
         for (session, kind) in Self.crossings(from: statesBefore, to: all) {
@@ -90,8 +91,16 @@ final class SessionNoticeCenter: ObservableObject {
     }
 
     /// Drops what has been up longer than `lifetime`, unless told to hold.
+    /// A note that an agent needs you is not on the clock: it stays until
+    /// you answer it, open it, or the session stops waiting.
     func expire(after lifetime: TimeInterval, now: Date = Date(), holding: Bool) {
         guard !holding else { return }
-        notices.removeAll { now.timeIntervalSince($0.at) > lifetime }
+        notices.removeAll { $0.kind == .finished && now.timeIntervalSince($0.at) > lifetime }
+    }
+
+    /// A session that stopped waiting takes its "needs you" note with it.
+    func settle(_ sessions: [String: [AgentSession]]) {
+        let waiting = Set(sessions.values.flatMap { $0 }.filter { $0.state == .waiting }.map(\.id))
+        notices.removeAll { $0.kind == .waiting && !waiting.contains($0.session.id) }
     }
 }

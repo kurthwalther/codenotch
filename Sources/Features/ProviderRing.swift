@@ -60,6 +60,8 @@ struct ProviderRing: View {
                 Circle()
                     .strokeBorder(trackColor, lineWidth: NotchLayout.trackStroke)
                     .animation(NotchMotion.reading, value: band)
+                    // The track is already quiet; only the coloured arc and
+                    // the glyph below take the resting fade.
 
                 if usedFraction != nil {
                     Circle()
@@ -78,18 +80,20 @@ struct ProviderRing: View {
                         // that sweeps reads as a measurement being taken.
                         .animation(NotchMotion.reading, value: sweep)
                         .animation(NotchMotion.reading, value: band)
+                        .opacity(isResting ? NotchViewModel.restingOpacity : 1)
                 }
 
                 ProviderGlyphView(glyph: glyph, size: NotchLayout.glyphSize)
                     .foregroundStyle(Palette.textPrimary)
                     // A spent limit dims its glyph so the ring reads as "waiting".
                     .opacity(band == .exhausted ? 0.35 : 1)
+                    .opacity(isResting ? NotchViewModel.restingOpacity : 1)
             }
             .opacity(isStale ? 0.45 : 1)
 
             if let activity, activity.state != .idle {
                 ActivityArc(summary: activity, scale: scale)
-                    .opacity(isResting ? 0.5 : 1)
+                    .opacity(isResting ? 0.3 : 1)
             }
         }
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
@@ -258,6 +262,7 @@ struct ProviderCell: View {
                 .frame(height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
+                .opacity(isResting ? NotchViewModel.restingOpacity : 1)
                 .padding(.top, NotchLayout.nameToPercentGap)
             resetCaption
                 .padding(.top, NotchLayout.captionGap)
@@ -310,6 +315,7 @@ struct ProviderCell: View {
                     .fill(secondary.band(thresholds).color)
                     .frame(width: max(height, width * CGFloat(secondary.remaining)))
                     .animation(NotchMotion.reading, value: secondary)
+                    .opacity(isResting ? NotchViewModel.restingOpacity : 1)
             }
         } else {
             Color.clear

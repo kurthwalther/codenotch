@@ -252,7 +252,7 @@ final class Preferences: ObservableObject {
             .flatMap(NotchVisibility.AutoScope.init(rawValue:)) ?? .session
         let rest = defaults.object(forKey: Keys.restAfter) as? Double ?? 10
         self.restAfterSeconds = min(max(rest, Self.restAfterRange.lowerBound), Self.restAfterRange.upperBound)
-        let seconds = defaults.object(forKey: Keys.noticeSeconds) as? Double ?? 12
+        let seconds = defaults.object(forKey: Keys.noticeSeconds) as? Double ?? 7
         self.noticeSeconds = min(max(seconds, Self.noticeSecondsRange.lowerBound),
                                  Self.noticeSecondsRange.upperBound)
         // Read from the system rather than from our own store: the user can turn

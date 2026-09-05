@@ -107,13 +107,18 @@ final class NotchViewModel: ObservableObject {
     @Published var showsShadow = false
     /// The pointer is on the notch, its handles or its card.
     @Published var isPointerOn = false
-    var castsShadow: Bool { showsShadow && isPointerOn }
+    /// Attention is on the notch by another road: the note beside it, or
+    /// the conversation being typed into.
+    @Published var isAttendedElsewhere = false
+    var castsShadow: Bool { showsShadow && (isPointerOn || isAttendedElsewhere) }
 
     /// How much smaller the notch draws at rest, about the point where it
     /// meets the bezel, so it stays flush.
     static let restingScale: CGFloat = 0.8
-    /// And how much quieter: rings, glyphs, numbers and bars. The handles go
-    /// further and fold away altogether.
+    /// And how much quieter — for what shines: the coloured arcs, the glyph,
+    /// the big number and the bar's fill. What is already grey stays as it
+    /// is; dimmed as well, a caption at half strength went to a third and
+    /// vanished. The handles go further and fold away altogether.
     static let restingOpacity: Double = 0.65
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.

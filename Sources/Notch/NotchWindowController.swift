@@ -192,7 +192,9 @@ final class NotchWindowController {
     /// Resting is only for a notch held open by the setting: on hover it
     /// folds away instead, and a pin is a request to read it.
     private func checkResting(now: Date = Date()) {
-        if attentionElsewhere() { lastAttention = now }
+        let elsewhere = attentionElsewhere()
+        if model.isAttendedElsewhere != elsewhere { model.isAttendedElsewhere = elsewhere }
+        if elsewhere { lastAttention = now }
         // Never while the pointer is on it — whatever the delay, and in
         // particular at a delay of zero, where "any time at all since the
         // last touch" would otherwise be true the instant after waking.

@@ -210,7 +210,6 @@ struct NotchRootView: View {
                     .frame(height: NotchLayout.bodyDepth(for: model.edge))
             }
         }
-        .opacity(model.isResting ? NotchViewModel.restingOpacity : 1)
         .allowsHitTesting(model.isExpanded)
     }
 
