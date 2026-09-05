@@ -122,6 +122,21 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// Set when something is blocked right now. Deliberately separate from the
     /// windows: it is not a measurement, it is a door being shut.
     var block: UsageBlock?
+    /// How fast each window is being spent, keyed by window id, for the ones
+    /// with enough readings behind them to say. Worked out by the store from
+    /// its history, not reported by any vendor.
+    var pace: [String: UsagePace] = [:]
+
+    /// The same reading with the ring pointed at `windowID`, when that window
+    /// is in it. Anything else keeps the provider's own default: a choice made
+    /// against a window that has since vanished from the response must not
+    /// leave the ring blank.
+    func choosingHeadline(_ windowID: String?) -> ProviderSnapshot {
+        guard let windowID, windows.contains(where: { $0.id == windowID }) else { return self }
+        var chosen = self
+        chosen.headlineID = windowID
+        return chosen
+    }
 
     /// The number on the cell: the provider's declared primary window — for
     /// Claude, the current session.

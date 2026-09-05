@@ -50,6 +50,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(keepDisplayAwake, forKey: Keys.keepDisplay) }
     }
 
+    /// Which metered window each provider's ring draws, chosen by the user.
+    /// Keyed by provider id; absent means the provider's own default.
+    @Published var ringWindows: [String: String] {
+        didSet { defaults.set(ringWindows, forKey: Keys.ringWindows) }
+    }
+
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != Self.isRegisteredForLogin else { return }
@@ -72,6 +78,7 @@ final class Preferences: ObservableObject {
         static let lastSeenVersion = "lastSeenVersion"
         static let keepAwake = "keepAwakeWhileWorking"
         static let keepDisplay = "keepDisplayAwake"
+        static let ringWindows = "ringWindows"
     }
 
     /// True the very first time this copy runs, and never again.
@@ -134,9 +141,16 @@ final class Preferences: ObservableObject {
         self.keepAwakeWhileWorking = defaults.object(forKey: Keys.keepAwake) as? Bool ?? true
         // The display is a separate question — the agent does not need it lit.
         self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
+        self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin
+    }
+
+    func ringWindow(for providerID: String) -> String? { ringWindows[providerID] }
+
+    func setRingWindow(_ windowID: String?, for providerID: String) {
+        ringWindows[providerID] = windowID
     }
 
     func isConnected(_ providerID: String) -> Bool {

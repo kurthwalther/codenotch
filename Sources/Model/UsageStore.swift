@@ -42,6 +42,8 @@ final class UsageStore: ObservableObject {
     private var lastAttempt: Date?
 
     private let archive: UsageArchive
+    /// Every reading, for working out how fast a window is going.
+    private let history: UsageHistory
     private var lastGood: [String: (snapshot: ProviderSnapshot, fetchedAt: Date)] = [:]
     private var timer: Timer?
     private var refreshTask: Task<Void, Never>?
@@ -56,6 +58,7 @@ final class UsageStore: ObservableObject {
         idleRefreshInterval: TimeInterval = 5 * 60,
         staleAfter: TimeInterval = 5 * 60,
         archive: UsageArchive = UsageArchive(),
+        history: UsageHistory = UsageHistory(),
         disconnected: Set<String> = []
     ) {
         self.providers = providers
@@ -63,6 +66,7 @@ final class UsageStore: ObservableObject {
         self.idleRefreshInterval = idleRefreshInterval
         self.staleAfter = staleAfter
         self.archive = archive
+        self.history = history
 
         // Open on what we knew last time rather than on an empty ring; the
         // first fetch will either confirm it or replace it.
@@ -87,17 +91,23 @@ final class UsageStore: ObservableObject {
         // switched-off provider for as long as it takes the binding to arrive.
         snapshots = providers.filter { !disconnected.contains($0.id) }.map { provider in
             guard let remembered = lastGood[provider.id] else { return Self.placeholder(provider) }
-            var snapshot = remembered.snapshot
+            var snapshot = history.attachingPace(to: remembered.snapshot)
             snapshot.status = .stale(since: remembered.fetchedAt)
             return snapshot
         }
     }
 
-    /// Enough to list the providers in settings without exposing them.
+    /// Enough to list the providers in settings without exposing them — and,
+    /// for choosing what the ring draws, which windows each one showed last.
     var providerSummaries: [ProviderSummary] {
-        providers.map {
-            ProviderSummary(id: $0.id, name: $0.displayName, glyph: $0.glyph,
-                            account: $0.account(), signIn: $0.signInRoute)
+        providers.map { provider in
+            let current = snapshots.first { $0.id == provider.id }
+            return ProviderSummary(
+                id: provider.id, name: provider.displayName, glyph: provider.glyph,
+                account: provider.account(), signIn: provider.signInRoute,
+                windows: (current?.windows ?? []).map { WindowChoice(id: $0.id, label: $0.label) },
+                defaultRing: current?.headline?.id
+            )
         }
     }
 
@@ -218,6 +228,7 @@ final class UsageStore: ObservableObject {
         snapshots.removeAll { $0.id == providerID }
         lastGood.removeValue(forKey: providerID)
         archive.forget(providerID)
+        history.forget(providerID)
 
         Task { await provider.signOut() }
     }
@@ -287,10 +298,12 @@ final class UsageStore: ObservableObject {
     private func snapshot(from provider: UsageProvider) async -> ProviderSnapshot {
         do {
             let fresh = try await provider.fetchSnapshot()
-            lastGood[provider.id] = (fresh, Date())
+            let now = Date()
+            lastGood[provider.id] = (fresh, now)
             archive.save(lastGood)
+            history.record(fresh, at: now)
             Log.usage.debug("\(provider.id, privacy: .public): \(fresh.windows.count) window(s)")
-            return fresh
+            return history.attachingPace(to: fresh, now: now)
         } catch {
             Log.usage.error("\(provider.id, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             return degraded(provider: provider, error: error)
@@ -324,7 +337,7 @@ final class UsageStore: ObservableObject {
         // A stale-but-recent reading is still worth showing undimmed; past the
         // window it gets marked, and the ring dims.
         let age = Date().timeIntervalSince(previous.fetchedAt)
-        var snapshot = previous.snapshot
+        var snapshot = history.attachingPace(to: previous.snapshot)
         snapshot.status = age > staleAfter ? .stale(since: previous.fetchedAt) : previous.snapshot.status
         return snapshot
     }

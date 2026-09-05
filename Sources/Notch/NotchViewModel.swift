@@ -37,6 +37,20 @@ final class NotchViewModel: ObservableObject {
     @Published var refreshing: Set<String> = []
     /// The settings handle is under the cursor.
     @Published var isHoveringSettings = false
+    /// The keep-awake handle is under the cursor.
+    @Published var isHoveringAwake = false
+    /// Mirrors the preference, so the handle can show which way it is set.
+    @Published var keepAwakeEnabled = true
+    /// True while the Mac is actually being held awake right now.
+    @Published var isHoldingAwake = false
+
+    /// What the keep-awake handle shows on hover: a cup that is full while
+    /// the Mac is held, empty while it merely would be, and a moon when the
+    /// whole thing is switched off.
+    var awakeSymbol: String {
+        guard keepAwakeEnabled else { return "moon.zzz" }
+        return isHoldingAwake ? "cup.and.saucer.fill" : "cup.and.saucer"
+    }
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.
     @Published var edge: NotchEdge = .right
@@ -200,11 +214,14 @@ final class NotchViewModel: ObservableObject {
     /// reaching for, and — where it has parted company with it — the arc you
     /// can actually see.
     var orbHandlePoints: [CGPoint] {
-        let button = CGPoint(x: orbAlong, y: orbInset)
+        handlePoints(button: CGPoint(x: orbAlong, y: orbInset), arcOffset: orbArcOffset)
+    }
+
+    private func handlePoints(button: CGPoint, arcOffset: CGSize) -> [CGPoint] {
         guard orbHugsCorner else { return [button] }
 
-        let arcCentre = CGPoint(x: orbAlong + orbArcOffset.width,
-                                y: orbInset + orbArcOffset.height)
+        let arcCentre = CGPoint(x: button.x + arcOffset.width,
+                                y: button.y + arcOffset.height)
         let reach = hypot(button.x - arcCentre.x, button.y - arcCentre.y)
         guard reach > 0 else { return [button] }
         // The middle of the quadrant, which is out from its centre in the same
@@ -223,10 +240,38 @@ final class NotchViewModel: ObservableObject {
     /// the two takes in a great deal of ground that is near neither — which is
     /// why the button used to appear well before the pointer reached the arc.
     func isOnOrbHandle(along: CGFloat, across: CGFloat) -> Bool {
+        Self.isOn(orbHandlePoints, along: along, across: across)
+    }
+
+    private static func isOn(_ points: [CGPoint], along: CGFloat, across: CGFloat) -> Bool {
         let radius = NotchLayout.orbHotZone / 2
-        return orbHandlePoints.contains {
-            hypot(along - $0.x, across - $0.y) <= radius
-        }
+        return points.contains { hypot(along - $0.x, across - $0.y) <= radius }
+    }
+
+    // MARK: - The keep-awake orb, at the near end
+
+    /// The mirror image of the settings orb, at the start of the stack: the
+    /// same distance in from the bezel, the same relationship to the flare or
+    /// corner there, with every along-the-stack quantity reflected. The two
+    /// handles bracket the readings, one at each end, and read as a pair.
+    var awakeAlong: CGFloat { shapeLength - orbAlong }
+
+    /// `orbArcOffset` reflected along the stack: "back toward the bar" now
+    /// points the other way, while the inward half stays put.
+    var awakeArcOffset: CGSize {
+        guard orbHugsCorner else { return .zero }
+        let inward = CGPoint(x: -edge.outward.x, y: -edge.outward.y)
+        let back = -NotchLayout.orbCornerOffset(corner: drawnCornerRadius)
+        return CGSize(width: back * (-edge.alongDirection.x + inward.x),
+                      height: back * (-edge.alongDirection.y + inward.y))
+    }
+
+    var awakeHandlePoints: [CGPoint] {
+        handlePoints(button: CGPoint(x: awakeAlong, y: orbInset), arcOffset: awakeArcOffset)
+    }
+
+    func isOnAwakeHandle(along: CGFloat, across: CGFloat) -> Bool {
+        Self.isOn(awakeHandlePoints, along: along, across: across)
     }
 
 

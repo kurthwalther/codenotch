@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import IOKit.pwr_mgt
 
@@ -11,7 +12,7 @@ import IOKit.pwr_mgt
 /// an external display, and nothing short of `pmset disablesleep` as root
 /// changes that.
 @MainActor
-final class KeepAwake {
+final class KeepAwake: ObservableObject {
     /// What to hold open.
     enum Scope: Equatable {
         /// The Mac stays up; the display may still go dark.
@@ -24,7 +25,9 @@ final class KeepAwake {
     /// "Preventing Sleep" column and in `pmset -g assertions`.
     static let reason = "Codenotch: an agent is working"
 
-    private(set) var held: Scope?
+    /// Published so the notch can show, on its handle, that the Mac is being
+    /// held right now rather than merely that it would be.
+    @Published private(set) var held: Scope?
     private var assertion = IOPMAssertionID(kIOPMNullAssertionID)
 
     /// What should be held, given the settings and what every session is

@@ -323,7 +323,48 @@ private struct AccountRow: View {
             detail
                 .font(.caption)
                 .padding(.leading, 26)
+
+            // Only where there is a choice to make: one window and the ring
+            // can only be that window.
+            if isConnected, provider.windows.count > 1 {
+                ringPicker
+                    .font(.caption)
+                    .padding(.leading, 26)
+            }
         }
+    }
+
+    /// Which of this provider's windows the ring draws.
+    ///
+    /// Claude's own panel leads with the session, and so does the ring by
+    /// default — but someone rationing a weekly limit wants the ring to be
+    /// *that* number, glanceable, not one hover away.
+    private var ringPicker: some View {
+        HStack(spacing: 8) {
+            Text("Ring shows")
+                .foregroundStyle(.secondary)
+            Picker("Ring shows", selection: ringBinding) {
+                ForEach(provider.windows) { Text($0.label).tag($0.id) }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .fixedSize()
+        }
+    }
+
+    /// The user's choice when it names a window that is actually there, the
+    /// provider's default otherwise — so the picker never shows a value that
+    /// is not in its own list.
+    private var ringBinding: Binding<String> {
+        Binding(
+            get: {
+                let chosen = preferences.ringWindow(for: provider.id) ?? provider.defaultRing
+                if let chosen, provider.windows.contains(where: { $0.id == chosen }) { return chosen }
+                return provider.windows.first?.id ?? ""
+            },
+            set: { preferences.setRingWindow($0, for: provider.id) }
+        )
     }
 
     @ViewBuilder

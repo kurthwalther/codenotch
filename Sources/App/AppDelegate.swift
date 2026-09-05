@@ -145,15 +145,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak store] in store?.disconnected = $0 }
                 .store(in: &cancellables)
 
+            // The store reports what each provider puts on its ring; the user's
+            // choice is laid over it here, so a change in Settings or the menu
+            // re-points the ring without a fetch.
             store.$snapshots
+                .combineLatest(preferences.$ringWindows)
                 .receive(on: RunLoop.main)
-                .sink { [weak controller] snapshots in
+                .sink { [weak controller] snapshots, chosen in
                     withAnimation(NotchMotion.unfold) {
-                        controller?.model.snapshots = snapshots
+                        controller?.model.snapshots = snapshots.map {
+                            $0.choosingHeadline(chosen[$0.id])
+                        }
                     }
                     controller?.model.now = Date()
                 }
                 .store(in: &cancellables)
+            controller.onChooseRingWindow = { providerID, windowID in
+                preferences.setRingWindow(windowID, for: providerID)
+            }
             store.start()
             controller.onRefresh = { [weak store] in store?.refreshNow() }
             controller.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
@@ -178,6 +187,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { keepAwake.hold($0) }
             .store(in: &cancellables)
+
+            // The handle above the notch: the same switch Settings has, in
+            // reach without opening anything, and a cup that fills while the
+            // Mac is actually being held.
+            controller.onToggleKeepAwake = { preferences.keepAwakeWhileWorking.toggle() }
+            preferences.$keepAwakeWhileWorking
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.model.keepAwakeEnabled = $0 }
+                .store(in: &cancellables)
+            keepAwake.$held
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.model.isHoldingAwake = $0 != nil }
+                .store(in: &cancellables)
 
             // CODENOTCH_DISCOVER=<url> loads that page in the signed-in WebView
             // and logs the API calls it makes — for finding an undocumented

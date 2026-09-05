@@ -36,6 +36,22 @@ struct NotchRootView: View {
                         .animation(motion(orbMotion), value: model.isExpanded)
                 }
 
+                // Its twin at the other end: the keep-awake handle, tucked
+                // into the near flare the same way.
+                if !model.snapshots.isEmpty {
+                    SettingsOrb(isHovered: model.isHoveringAwake, edge: model.edge,
+                                convex: model.orbHugsCorner,
+                                arcRadius: model.orbArcRadius,
+                                arcOffset: model.awakeArcOffset,
+                                symbol: model.awakeSymbol,
+                                atStart: true,
+                                spin: 0)
+                        .position(awakeCentre(place))
+                        .scaleEffect(model.isExpanded ? 1 : model.orbMergeScale)
+                        .opacity(model.isExpanded ? 1 : 0)
+                        .animation(motion(awakeMotion), value: model.isExpanded)
+                }
+
                 if let snapshot = model.hoveredSnapshot, let index = model.hoveredIndex,
                    model.isExpanded {
                     TooltipCard(
@@ -72,6 +88,12 @@ struct NotchRootView: View {
         model.isExpanded
             ? NotchMotion.stagger(index: model.snapshots.count)
             : NotchMotion.merge
+    }
+
+    /// The near-end orb arrives with the first cell, the way the far one
+    /// arrives after the last.
+    private var awakeMotion: Animation {
+        model.isExpanded ? NotchMotion.stagger(index: 0) : NotchMotion.merge
     }
 
     private func notch(_ place: NotchPlacement) -> some View {
@@ -177,6 +199,14 @@ struct NotchRootView: View {
     private func orbCentre(_ place: NotchPlacement) -> CGPoint {
         place.point(
             along: model.slack + model.orbAlong,
+            across: model.orbInset
+        )
+    }
+
+    /// The same point reflected to the near end of the stack.
+    private func awakeCentre(_ place: NotchPlacement) -> CGPoint {
+        place.point(
+            along: model.slack + model.awakeAlong,
             across: model.orbInset
         )
     }

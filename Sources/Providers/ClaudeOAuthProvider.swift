@@ -264,6 +264,9 @@ struct UsageResponse: Decodable {
         case "weekly_all":    return "All models"
         case "weekly_opus":   return "Opus"
         case "weekly_sonnet": return "Sonnet"
+        // The model-scoped weekly window. The API calls it "scoped"; Claude's
+        // own panel names the model it is scoped to.
+        case "weekly_scoped": return "Fable"
         default:
             return kind
                 .replacingOccurrences(of: "weekly_", with: "")

@@ -119,4 +119,15 @@ struct ProviderSummary: Identifiable, Equatable {
     let glyph: ProviderGlyph
     let account: ProviderAccount?
     let signIn: SignInRoute
+    /// The metered windows this provider showed last, for choosing which one
+    /// the ring draws. Empty until the first reading.
+    var windows: [WindowChoice] = []
+    /// Which window the provider itself puts on the ring.
+    var defaultRing: String? = nil
+}
+
+/// One window a ring could draw, as the settings sheet and the menu list it.
+struct WindowChoice: Identifiable, Equatable {
+    let id: String
+    let label: String
 }

@@ -27,10 +27,28 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(s.usedFraction ?? -1, 0.22, accuracy: 0.0001)
     }
 
-    /// The ring and the tooltip's top row are the same window, always.
-    func testHeadlineMatchesTheFirstRowShown() {
+    /// Left alone, the ring and the tooltip's top row are the same window.
+    func testHeadlineMatchesTheFirstRowShownByDefault() {
         let s = snapshot([window("session", 0.05), window("weekly_all", 0.9)])
         XCTAssertEqual(s.headline?.id, s.windows.first?.id)
+    }
+
+    /// Pointed at another window, the ring follows it — and the tooltip marks
+    /// that row rather than reordering, so the rows keep the vendor's order.
+    func testTheRingCanBePointedAtAnotherWindow() {
+        let s = snapshot([window("session", 0.05), window("weekly_all", 0.9)])
+        let chosen = s.choosingHeadline("weekly_all")
+        XCTAssertEqual(chosen.headline?.id, "weekly_all")
+        XCTAssertEqual(chosen.headlineText, "10%")
+        XCTAssertEqual(chosen.windows.map(\.id), ["session", "weekly_all"], "rows keep their order")
+    }
+
+    /// A choice naming a window that is not in this reading changes nothing:
+    /// the provider's default stays, and the ring is never left blank.
+    func testAChoiceForAMissingWindowIsIgnored() {
+        let s = snapshot([window("session", 0.05), window("weekly_all", 0.9)])
+        XCTAssertEqual(s.choosingHeadline("weekly_fable").headline?.id, "session")
+        XCTAssertEqual(s.choosingHeadline(nil).headline?.id, "session")
     }
 
     /// The ring and the label say what is *left*: a session 73% through reads

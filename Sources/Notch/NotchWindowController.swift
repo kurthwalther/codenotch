@@ -23,6 +23,12 @@ final class NotchWindowController {
     var onRefreshProvider: ((String) -> Void)?
     /// Open the settings window, asked for by clicking the handle.
     var onOpenSettings: (() -> Void)?
+    /// Switch keep-awake on or off, asked for by clicking the other handle.
+    var onToggleKeepAwake: (() -> Void)?
+    /// Point a provider's ring at one of its windows, chosen from the menu.
+    var onChooseRingWindow: ((_ providerID: String, _ windowID: String) -> Void)?
+    /// What the menu's ring items refer to, by tag, for as long as it is open.
+    private var ringChoices: [(providerID: String, windowID: String)] = []
 
     private var panel: NotchPanel?
     private var hostingView: NotchHostingView<NotchRootView>?
@@ -178,12 +184,12 @@ final class NotchWindowController {
         )
     }
 
-    /// The handle's bounding box, for deciding whether the panel takes events
-    /// at all. Whether a point is actually *on* the handle is a finer question
-    /// than a box can answer — see `isOverHandle`.
+    /// The handles' bounding box, for deciding whether the panel takes events
+    /// at all. Whether a point is actually *on* a handle is a finer question
+    /// than a box can answer — see `isOverHandle` and `isOverAwakeHandle`.
     private var handleRect: CGRect {
         let side = NotchLayout.orbHotZone
-        let boxes = model.orbHandlePoints.map { point -> CGRect in
+        let boxes = (model.orbHandlePoints + model.awakeHandlePoints).map { point -> CGRect in
             let centre = placement.point(along: model.slack + point.x, across: point.y)
             return CGRect(x: centre.x - side / 2, y: centre.y - side / 2,
                           width: side, height: side)
@@ -191,11 +197,17 @@ final class NotchWindowController {
         return boxes.dropFirst().reduce(boxes.first ?? .zero) { $0.union($1) }
     }
 
-    /// Whether the pointer is on the handle itself rather than merely inside
-    /// the box that contains it.
+    /// Whether the pointer is on the settings handle itself rather than
+    /// merely inside the box that contains it.
     private func isOverHandle(_ local: CGPoint) -> Bool {
         model.isOnOrbHandle(along: placement.along(of: local) - model.slack,
                             across: placement.across(of: local))
+    }
+
+    /// And the keep-awake handle, at the other end.
+    private func isOverAwakeHandle(_ local: CGPoint) -> Bool {
+        model.isOnAwakeHandle(along: placement.along(of: local) - model.slack,
+                              across: placement.across(of: local))
     }
 
     /// The only region that takes the mouse. Everything else in the panel is a
@@ -203,7 +215,8 @@ final class NotchWindowController {
     /// folding away is to stop being in the way.
     private var liveRect: CGRect {
         guard model.isExpanded else { return pillRect }
-        // The orb hangs below the shape, so the live region is both together.
+        // The orbs hang off each end of the shape, so the live region is all
+        // three together.
         return notchRect.union(handleRect)
     }
 
@@ -314,8 +327,13 @@ final class NotchWindowController {
         if model.isHoveringSettings != overHandle {
             model.isHoveringSettings = overHandle
         }
+        let overAwake = model.isExpanded && isOverAwakeHandle(local)
+        if model.isHoveringAwake != overAwake {
+            model.isHoveringAwake = overAwake
+        }
         setPointing(
-            Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target) || overHandle
+            Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target)
+                || overHandle || overAwake
         )
 
         if let target {
@@ -399,6 +417,10 @@ final class NotchWindowController {
         // it and clicking the gear refetches a provider instead.
         if isOverHandle(local) {
             onOpenSettings?()
+            return
+        }
+        if isOverAwakeHandle(local) {
+            onToggleKeepAwake?()
             return
         }
         if notchRect.contains(local),
@@ -572,6 +594,33 @@ final class NotchWindowController {
         menu.addItem(keepOpen)
         menu.addItem(.separator())
 
+        // Which window each ring draws, for the providers that meter more than
+        // one. A submenu per provider, the current choice ticked.
+        var choices: [(providerID: String, windowID: String)] = []
+        for snapshot in model.snapshots where snapshot.windows.count > 1 {
+            let submenu = NSMenu()
+            for window in snapshot.windows {
+                let item = NSMenuItem(
+                    title: window.label,
+                    action: #selector(MenuActions.chooseRing(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = menuActions
+                item.tag = choices.count
+                item.isEnabled = true
+                item.state = window.id == snapshot.headline?.id ? .on : .off
+                choices.append((snapshot.id, window.id))
+                submenu.addItem(item)
+            }
+            let parent = NSMenuItem(title: "\(snapshot.displayName) ring shows",
+                                    action: nil, keyEquivalent: "")
+            parent.isEnabled = true
+            parent.submenu = submenu
+            menu.addItem(parent)
+        }
+        ringChoices = choices
+        if !choices.isEmpty { menu.addItem(.separator()) }
+
         let refresh = NSMenuItem(
             title: "Refresh now",
             action: #selector(MenuActions.refreshNow(_:)),
@@ -604,7 +653,11 @@ final class NotchWindowController {
     private lazy var menuActions = MenuActions(
         refresh: { [weak self] in self?.onRefresh?() },
         signIn: { [weak self] index in self?.signInItems[safe: index]?.action() },
-        togglePinned: { [weak self] in self?.togglePinned() }
+        togglePinned: { [weak self] in self?.togglePinned() },
+        chooseRing: { [weak self] index in
+            guard let self, let choice = self.ringChoices[safe: index] else { return }
+            self.onChooseRingWindow?(choice.providerID, choice.windowID)
+        }
     )
 }
 
@@ -615,15 +668,18 @@ final class MenuActions: NSObject {
     private let refresh: () -> Void
     private let signIn: (Int) -> Void
     private let pin: () -> Void
+    private let chooseRing: (Int) -> Void
 
     init(
         refresh: @escaping () -> Void,
         signIn: @escaping (Int) -> Void,
-        togglePinned: @escaping () -> Void
+        togglePinned: @escaping () -> Void,
+        chooseRing: @escaping (Int) -> Void
     ) {
         self.refresh = refresh
         self.signIn = signIn
         self.pin = togglePinned
+        self.chooseRing = chooseRing
     }
 
     @objc func refreshNow(_ sender: Any?) { refresh() }
@@ -632,6 +688,11 @@ final class MenuActions: NSObject {
     @objc func signIn(_ sender: Any?) {
         guard let item = sender as? NSMenuItem else { return }
         signIn(item.tag)
+    }
+
+    @objc func chooseRing(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem else { return }
+        chooseRing(item.tag)
     }
 }
 

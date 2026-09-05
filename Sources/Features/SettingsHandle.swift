@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The settings control, below the notch.
+/// The settings control, below the notch — and, turned round and given a cup,
+/// the keep-awake control above it.
 ///
 /// At rest it is a single arc — a segment of a circle's edge, tucked into the
 /// corner the notch's bottom flare makes. On hover that same circle fills in and
@@ -24,6 +25,14 @@ struct SettingsOrb: View {
     /// where the two are the same object; back onto the corner when the button
     /// has had to move clear of the bar.
     var arcOffset: CGSize = .zero
+    /// What the disc shows on hover.
+    var symbol: String = "gearshape"
+    /// At the start of the stack rather than its end: the resting arc faces
+    /// the other way along it.
+    var atStart: Bool = false
+    /// How far the glyph turns as it arrives. A gear turning in reads as a
+    /// gear; a cup is simply set down.
+    var spin: Double = -60
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -40,8 +49,9 @@ struct SettingsOrb: View {
     /// y growing downward.
     /// Hugging a corner from outside is the same relationship as hugging a
     /// flare from inside, turned through half a circle.
-    static func restingTrim(for edge: NotchEdge, convex: Bool) -> ClosedRange<CGFloat> {
-        let concave = restingTrim(for: edge)
+    static func restingTrim(for edge: NotchEdge, convex: Bool,
+                            atStart: Bool = false) -> ClosedRange<CGFloat> {
+        let concave = restingTrim(for: edge, atStart: atStart)
         guard convex else { return concave }
         let turned = (concave.lowerBound + 0.5).truncatingRemainder(dividingBy: 1)
         return turned...(turned + 0.25)
@@ -56,7 +66,22 @@ struct SettingsOrb: View {
         }
     }
 
-    private var restingTrim: ClosedRange<CGFloat> { Self.restingTrim(for: edge, convex: convex) }
+    /// The same two directions from the *near* end of the stack: still
+    /// outward, but now forward along it rather than back. Reflected along
+    /// the stack, not turned — the outward half stays put.
+    static func restingTrim(for edge: NotchEdge, atStart: Bool) -> ClosedRange<CGFloat> {
+        guard atStart else { return restingTrim(for: edge) }
+        switch edge {
+        case .right:  return 0.0...0.25      // right, round to down
+        case .left:   return 0.25...0.5      // down, round to the left
+        case .top:    return 0.75...1.0      // up, round to the right
+        case .bottom: return 0.0...0.25      // right, round to down
+        }
+    }
+
+    private var restingTrim: ClosedRange<CGFloat> {
+        Self.restingTrim(for: edge, convex: convex, atStart: atStart)
+    }
 
 
 
@@ -80,12 +105,15 @@ struct SettingsOrb: View {
                 .opacity(isHovered ? 1 : 0)
                 .scaleEffect(isHovered ? 1 : 1.1)
 
-            Image(systemName: "gearshape")
+            Image(systemName: symbol)
                 .font(.system(size: NotchLayout.orbGlyph, weight: .regular))
                 .foregroundStyle(Palette.textPrimary)
                 .opacity(isHovered ? 1 : 0)
                 .scaleEffect(isHovered ? 1 : 0.5)
-                .rotationEffect(.degrees(isHovered ? 0 : -60))
+                .rotationEffect(.degrees(isHovered ? 0 : spin))
+                // A swapped glyph fades rather than snapping — the cup
+                // fills as the Mac is taken hold of.
+                .contentTransition(.symbolEffect(.replace))
         }
         // Sized to the larger of the two states, and never clipped: the arc
         // may sit well outside this frame when it has stayed back on the
