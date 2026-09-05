@@ -53,7 +53,8 @@ struct NoticeRootView: View {
                     conversation: conversation,
                     close: { controller.closeConversation() },
                     open: { SessionFocus.focus(conversation.session) },
-                    send: { controller.send() }
+                    send: { controller.send() },
+                    cancel: { controller.cancelSend() }
                 )
                 .padding(Design.px(16))
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -263,18 +264,33 @@ final class NoticeWindowController: ObservableObject {
         }
     }
 
-    /// Sends the draft and, when it went, clears it — the transcript will
-    /// show it as a turn a moment later.
+    /// Sends the draft — and what goes with it — and, when it went, clears
+    /// both; the transcript will show it as a turn a moment later. An agent
+    /// mid-turn is waited for, and the card says so meanwhile.
     func send() {
-        guard let conversation else { return }
-        let text = conversation.draft
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard let conversation, conversation.dispatch == nil else { return }
+        let text = Attachments.compose(conversation.draft, with: conversation.attachments)
+        guard !text.isEmpty else { return }
+        let dispatch = SessionReply.Dispatch()
+        conversation.dispatch = dispatch
+        if conversation.state == .busy { conversation.sendState = .waiting }
         Task { @MainActor in
-            let state = await SessionReply.send(text, to: conversation.session)
+            let state = await SessionReply.send(text, to: conversation.session, dispatch: dispatch)
+            conversation.dispatch = nil
             conversation.sendState = state
-            if case .sent = state { conversation.draft = "" }
-            if case .copied = state { conversation.draft = "" }
+            switch state {
+            case .sent, .copied:
+                conversation.draft = ""
+                conversation.attachments = []
+            default:
+                break
+            }
         }
+    }
+
+    /// Calls off a send that is waiting for the agent; the draft stays.
+    func cancelSend() {
+        conversation?.dispatch?.cancel()
     }
 
     private func present() {

@@ -156,3 +156,62 @@ final class AutoScopeTests: XCTestCase {
         XCTAssertEqual(conversation.state, .idle)
     }
 }
+
+/// The closing touches: rows in the notch's order, a line that carries its
+/// files, and a rest that can be immediate.
+@MainActor
+final class NotchOrderTests: XCTestCase {
+    private func window(_ id: String) -> LimitWindow {
+        LimitWindow(id: id, label: id, usedFraction: 0.3)
+    }
+
+    func testTheCardListsTheBarThenTheRingThenTheRest() {
+        let s = ProviderSnapshot(id: "claude", displayName: "Claude", glyph: .claude,
+                                 fidelity: .official, status: .ok,
+                                 windows: [window("session"), window("weekly_all"), window("weekly_scoped")],
+                                 headlineID: "session")
+        XCTAssertEqual(s.orderedWindows.map(\.id), ["session", "weekly_all", "weekly_scoped"],
+                       "nothing chosen: the ring's window leads, the rest follow in order")
+        let chosen = s.choosingHeadline("weekly_scoped").choosingSecondary("session")
+        XCTAssertEqual(chosen.orderedWindows.map(\.id), ["session", "weekly_scoped", "weekly_all"],
+                       "the bar's window on top, then the ring's, then the one not on the notch")
+        XCTAssertEqual(chosen.windows.map(\.id), ["session", "weekly_all", "weekly_scoped"],
+                       "the reading itself keeps the provider's order")
+    }
+
+    func testTheLineCarriesItsFilesByPath() {
+        let a = URL(fileURLWithPath: "/tmp/one.png"), b = URL(fileURLWithPath: "/tmp/two.md")
+        XCTAssertEqual(Attachments.compose("look at these", with: [a, b]), "look at these\n\n/tmp/one.png\n/tmp/two.md")
+        XCTAssertEqual(Attachments.compose("  ", with: [a]), "/tmp/one.png", "files alone are a line too")
+        XCTAssertEqual(Attachments.compose("just words", with: []), "just words")
+        XCTAssertTrue(Attachments.isImage(a))
+        XCTAssertFalse(Attachments.isImage(b))
+    }
+
+    func testAPastedImageBecomesAFile() throws {
+        let image = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
+            NSColor.red.setFill(); rect.fill(); return true
+        }
+        let url = try XCTUnwrap(Attachments.save(image, now: Date(timeIntervalSince1970: 1_700_000_000)))
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertEqual(url.pathExtension, "png")
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("pasted-"))
+    }
+
+    func testTheRestCanBeImmediate() {
+        XCTAssertEqual(Preferences.restAfterRange.lowerBound, 0)
+        let name = "rest0-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let prefs = Preferences(defaults: defaults)
+        prefs.restAfterSeconds = 0
+        XCTAssertEqual(Preferences(defaults: defaults).restAfterSeconds, 0, accuracy: 0.001)
+    }
+
+    func testACancelledWaitIsNotAFailure() async {
+        let dispatch = SessionReply.Dispatch()
+        dispatch.cancel()
+        XCTAssertTrue(dispatch.cancelled)
+    }
+}

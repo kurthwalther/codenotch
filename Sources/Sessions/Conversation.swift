@@ -16,11 +16,20 @@ final class Conversation: ObservableObject {
 
     enum SendState: Equatable {
         case idle
+        /// The agent is mid-turn; the line goes the moment it is free.
+        case waiting
         case sent(Date)
         case failed(String)
         /// No way to deliver to this session; the text is on the clipboard.
         case copied
     }
+
+    /// Files to go with the line, by path — which is how Claude Code takes
+    /// them, images included.
+    @Published var attachments: [URL] = []
+
+    /// The send in flight, so a wait for the agent can be called off.
+    var dispatch: SessionReply.Dispatch?
 
     /// How many turns the card shows. Enough for the thread of it; the whole
     /// session lives in the tool that owns it.

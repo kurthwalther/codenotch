@@ -25,6 +25,10 @@ enum Palette {
     /// the night: a shade stronger, so the two positions are told apart at a
     /// glance.
     static let espresso      = Color(hex: 0xF2A65A)
+
+    /// Your own words in a conversation: a blue with the brightness turned
+    /// down, so it sits on black without shouting over the agent's white.
+    static let you           = Color(hex: 0x7F9FCB)
 }
 
 extension Color {

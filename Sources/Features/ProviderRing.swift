@@ -210,9 +210,17 @@ struct ProviderCell: View {
     var body: some View {
         VStack(spacing: 0) {
             if reservesBar {
-                secondaryBar
-                    .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
-                    .padding(.bottom, NotchLayout.secondaryBarGap)
+                VStack(spacing: NotchLayout.secondaryBarLabelGap) {
+                    secondaryBar
+                        .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
+                    // Its own number, a whisper beside the ring's figure.
+                    Text(secondary.map { "\(Int(($0.remaining * 100).rounded()))%" } ?? " ")
+                        .font(Typography.barPercent)
+                        .foregroundStyle(Palette.textSecondary)
+                        .frame(height: NotchLayout.secondaryBarLabelHeight)
+                        .contentTransition(.numericText())
+                }
+                .padding(.bottom, NotchLayout.secondaryBarGap)
             }
             ProviderRing(
                 usedFraction: snapshot.hasReading ? snapshot.ringFraction : nil,

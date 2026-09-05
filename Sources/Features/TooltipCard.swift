@@ -418,7 +418,7 @@ private struct ProviderTooltip: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, NotchLayout.headerToBlock)
             } else {
-                ForEach(Array(snapshot.windows.enumerated()), id: \.element.id) { index, window in
+                ForEach(Array(snapshot.orderedWindows.enumerated()), id: \.element.id) { index, window in
                     LimitWindowRow(
                         window: window, fidelity: snapshot.fidelity, now: now,
                         // Only worth marking where there is more than one to

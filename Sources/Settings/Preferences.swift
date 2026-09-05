@@ -106,7 +106,9 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(restAfterSeconds, forKey: Keys.restAfter) }
     }
 
-    static let restAfterRange: ClosedRange<Double> = 3...60
+    /// Zero is a notch that rests the moment the pointer leaves it: open
+    /// and full-size only while hovered.
+    static let restAfterRange: ClosedRange<Double> = 0...60
 
     /// A note beside the notch when an agent finishes or needs you.
     @Published var noticesEnabled: Bool {

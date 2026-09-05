@@ -149,6 +149,11 @@ enum NotchLayout {
     // lesser gauge.
     static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
+    /// The bar's own number, under it, and the gap between the two.
+    static var secondaryBarLabelGap: CGFloat { Design.npx(6) }
+    static var secondaryBarLabelHeight: CGFloat {
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 12), weight: .medium))
+    }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with
     /// none — needs that much more to look evenly spaced.
@@ -161,7 +166,9 @@ enum NotchLayout {
     /// rings.
     nonisolated(unsafe) static var reservesSecondaryBar = false
     static var secondaryBarSpace: CGFloat {
-        reservesSecondaryBar ? secondaryBarHeight + secondaryBarGap : 0
+        reservesSecondaryBar
+            ? secondaryBarHeight + secondaryBarLabelGap + secondaryBarLabelHeight + secondaryBarGap
+            : 0
     }
     /// The gap between the caption and the keep-awake handle, and inside it.
     static var orbCaptionGap: CGFloat { Design.npx(14) }

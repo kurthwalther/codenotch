@@ -76,15 +76,16 @@ struct SettingsView: View {
                     Text("Settles after")
                     Slider(value: $preferences.restAfterSeconds,
                            in: Preferences.restAfterRange, step: 1)
-                    Text("\(Int(preferences.restAfterSeconds.rounded())) s")
+                    Text(preferences.restAfterSeconds < 0.5 ? "hover" : "\(Int(preferences.restAfterSeconds.rounded())) s")
                         .monospacedDigit()
-                        .frame(width: 40, alignment: .trailing)
+                        .frame(width: 44, alignment: .trailing)
                         .foregroundStyle(.secondary)
                 }
                 .disabled(preferences.notchVisibility == .onHover || preferences.notchVisibility == .hidden)
                 Text("Left alone this long under Always show or Auto, the notch draws "
                      + "smaller and quieter, and its handles fold away. It wakes as the "
-                     + "pointer heads for it, or when an agent starts, finishes or waits.")
+                     + "pointer heads for it, or when an agent starts, finishes or waits. "
+                     + "At zero it rests whenever the pointer is not on it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

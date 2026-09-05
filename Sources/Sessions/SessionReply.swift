@@ -22,16 +22,31 @@ enum SessionReply {
         }
     }
 
+    /// A send in flight. Holds the tool's process so a wait for the agent to
+    /// be free can be called off. Not tied to an actor: it is made where the
+    /// send starts and cancelled from the card, both on the main thread, and
+    /// `terminate` is safe from anywhere.
+    final class Dispatch: @unchecked Sendable {
+        fileprivate var process: Process?
+        private(set) var cancelled = false
+        func cancel() {
+            cancelled = true
+            process?.terminate()
+        }
+    }
+
     @MainActor
-    static func send(_ text: String, to session: AgentSession) async -> Conversation.SendState {
+    static func send(_ text: String, to session: AgentSession,
+                     dispatch: Dispatch = Dispatch()) async -> Conversation.SendState {
         let line = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !line.isEmpty, let locator = session.locator else { return .idle }
         switch route(for: locator, processes: LiveProcesses()) {
         case .superconductor(let cwd):
             do {
-                try await sendThroughSuperconductor(line, cwd: cwd)
+                try await sendThroughSuperconductor(line, cwd: cwd, dispatch: dispatch)
                 return .sent(Date())
             } catch {
+                if dispatch.cancelled { return .idle }
                 Log.sessions.error("reply via sc failed: \(error.localizedDescription, privacy: .public)")
                 return .failed(error.localizedDescription)
             }
@@ -106,13 +121,22 @@ enum SessionReply {
     /// is Claude's. The app does not say which of its agents is which
     /// process, so a worktree with two Claude agents is left alone rather
     /// than guessed at.
-    static func sendThroughSuperconductor(_ text: String, cwd: String) async throws {
+    ///
+    /// An agent mid-turn cannot take a prompt — the app would refuse and
+    /// park the text in its composer for a hand to send later — so the send
+    /// waits for the agent to be free, up to ten minutes, and goes then.
+    static let waitForAgent: Int = 10 * 60 * 1000
+
+    @MainActor
+    static func sendThroughSuperconductor(_ text: String, cwd: String,
+                                          dispatch: Dispatch = Dispatch()) async throws {
         let listing = try await run(["agents", "list", "--output", "json", "--worktree", cwd])
         guard let target = pickTarget(fromAgentsJSON: listing) else {
             throw ReplyError(errorDescription: "Couldn't tell which agent to send to")
         }
         _ = try await run(["agent", "send", "--to", "id:\(target)", "--prompt", text,
-                           "--worktree", cwd, "--output", "json"])
+                           "--wait-until-idle", "--timeout-ms", String(waitForAgent),
+                           "--worktree", cwd, "--output", "json"], dispatch: dispatch)
     }
 
     /// What the tool said went wrong, in its own JSON on standard output —
@@ -144,7 +168,8 @@ enum SessionReply {
         return claude[0]["stable_target_id"] as? String
     }
 
-    static func run(_ arguments: [String]) async throws -> Data {
+    @MainActor
+    static func run(_ arguments: [String], dispatch: Dispatch? = nil) async throws -> Data {
         let sc = scURL
         guard FileManager.default.isExecutableFile(atPath: sc.path) else {
             throw ReplyError(errorDescription: "super.engineering's command line tool is not installed")
@@ -153,6 +178,7 @@ enum SessionReply {
             let process = Process()
             process.executableURL = sc
             process.arguments = arguments
+            dispatch?.process = process
             let out = Pipe(), err = Pipe()
             process.standardOutput = out
             process.standardError = err

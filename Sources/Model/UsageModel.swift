@@ -163,6 +163,14 @@ struct ProviderSnapshot: Identifiable, Equatable {
         secondary?.usedFraction.map(SecondaryReading.init)
     }
 
+    /// The windows in the order the notch shows them: the bar's first, since
+    /// it sits on top, then the ring's, then whatever is not on the notch at
+    /// all, in the provider's own order.
+    var orderedWindows: [LimitWindow] {
+        let onTop = [secondary, headline].compactMap { $0 }
+        return onTop + windows.filter { window in !onTop.contains { $0.id == window.id } }
+    }
+
     /// The same reading with a second window chosen. Like `choosingHeadline`,
     /// a window that is not in this reading is simply not shown.
     func choosingSecondary(_ windowID: String?) -> ProviderSnapshot {
