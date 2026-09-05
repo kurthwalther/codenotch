@@ -251,10 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .store(in: &cancellables)
             preferences.$notchShadow
                 .receive(on: RunLoop.main)
-                .sink { [weak controller, weak self] in
-                    controller?.model.showsShadow = $0
-                    self?.notices?.showsShadow = $0
-                }
+                .sink { [weak controller] in controller?.model.showsShadow = $0 }
                 .store(in: &cancellables)
             preferences.$hideInFullscreen
                 .removeDuplicates()

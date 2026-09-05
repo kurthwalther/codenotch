@@ -193,8 +193,12 @@ final class NotchWindowController {
     /// folds away instead, and a pin is a request to read it.
     private func checkResting(now: Date = Date()) {
         if attentionElsewhere() { lastAttention = now }
+        // Never while the pointer is on it — whatever the delay, and in
+        // particular at a delay of zero, where "any time at all since the
+        // last touch" would otherwise be true the instant after waking.
+        let attended = model.isPointerOn || attentionElsewhere()
         let shouldRest = model.isAlwaysOn && model.isExpanded && !hiddenForFullscreen
-            && now.timeIntervalSince(lastAttention) > restAfter
+            && !attended && now.timeIntervalSince(lastAttention) >= restAfter
         guard shouldRest != model.isResting else { return }
         if shouldRest {
             withAnimation(.easeInOut(duration: 0.6)) { model.isResting = true }

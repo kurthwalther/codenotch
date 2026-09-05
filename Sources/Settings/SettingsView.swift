@@ -65,8 +65,8 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 Toggle("Shadow", isOn: $preferences.notchShadow)
-                Text("A soft shadow under the notch and its cards, the way a panel "
-                     + "floating a little off the screen casts one.")
+                Text("A soft shadow under the notch and its card while the pointer is "
+                     + "on them, the way a panel floating a little off the screen casts one.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

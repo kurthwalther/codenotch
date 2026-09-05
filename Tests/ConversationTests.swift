@@ -242,8 +242,8 @@ final class CaptionTests: XCTestCase {
 
     func testEveryCellCarriesTheTwoCaptionLines() {
         XCTAssertEqual(NotchLayout.captionSpace,
-                       NotchLayout.ringCaptionGap + NotchLayout.captionLineHeight + NotchLayout.captionGap
-                           + NotchLayout.captionLineHeight + NotchLayout.captionGap - NotchLayout.ringLabelGap,
+                       NotchLayout.ringCaptionGap + NotchLayout.captionLineHeight + NotchLayout.nameToPercentGap
+                           + NotchLayout.captionGap + NotchLayout.captionLineHeight - NotchLayout.ringLabelGap,
                        accuracy: 0.001)
         XCTAssertEqual(NotchLayout.cellExtent,
                        NotchLayout.secondaryBarSpace + NotchLayout.ringDiameter + NotchLayout.ringLabelGap

@@ -156,7 +156,10 @@ enum NotchLayout {
     static var secondaryBarLabelGap: CGFloat { Design.npx(5) }
     static var secondaryBarNameGap: CGFloat { Design.npx(11) }
     static var secondaryBarLabelHeight: CGFloat {
-        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 15), weight: .semibold))
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 17), weight: .semibold))
+    }
+    static var secondaryBarNameHeight: CGFloat {
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 12.5), weight: .medium))
     }
     /// The captions around the ring's number: its window's name between the
     /// ring and the number, and when it resets under the number. Every cell
@@ -165,12 +168,15 @@ enum NotchLayout {
     static var captionGap: CGFloat { Design.npx(3) }
     /// Ring to name.
     static var ringCaptionGap: CGFloat { Design.npx(10) }
+    /// Name to number: more than the caption gap, so the name reads as a
+    /// heading for the number rather than a line of it.
+    static var nameToPercentGap: CGFloat { Design.npx(8) }
     static var captionLineHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
     }
     /// What the captions add to the frame's cell of ring, gap and number.
     static var captionSpace: CGFloat {
-        ringCaptionGap + captionLineHeight + captionGap + captionLineHeight + captionGap - ringLabelGap
+        ringCaptionGap + captionLineHeight + nameToPercentGap + captionGap + captionLineHeight - ringLabelGap
     }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with
@@ -186,7 +192,7 @@ enum NotchLayout {
     static var secondaryBarSpace: CGFloat {
         reservesSecondaryBar
             ? secondaryBarLabelHeight + secondaryBarLabelGap + secondaryBarHeight
-                + secondaryBarNameGap + captionLineHeight + secondaryBarGap
+                + secondaryBarNameGap + secondaryBarNameHeight + secondaryBarGap
             : 0
     }
     /// The gap between the caption and the keep-awake handle, and inside it.

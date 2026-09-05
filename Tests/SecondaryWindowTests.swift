@@ -68,7 +68,7 @@ final class SecondaryWindowTests: XCTestCase {
 
         let space = NotchLayout.secondaryBarLabelHeight + NotchLayout.secondaryBarLabelGap
             + NotchLayout.secondaryBarHeight + NotchLayout.secondaryBarNameGap
-            + NotchLayout.captionLineHeight + NotchLayout.secondaryBarGap
+            + NotchLayout.secondaryBarNameHeight + NotchLayout.secondaryBarGap
         XCTAssertEqual(NotchLayout.cellExtent - extent, space, accuracy: 0.001)
         XCTAssertEqual(NotchLayout.ringCenter(index: 0, edge: .right) - ring, space, accuracy: 0.001,
                        "down a side edge the ring follows the bar")

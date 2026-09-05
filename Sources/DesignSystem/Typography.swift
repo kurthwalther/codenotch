@@ -15,9 +15,15 @@ enum Typography {
     }
 
     /// The second window's own number, above its bar: a whisper next to the
-    /// ring's figure. Cap height 15px.
+    /// ring's figure. Cap height 17px.
     static var barPercent: Font {
-        Font.system(size: Design.notchFontSize(capPixels: 15), weight: .semibold)
+        Font.system(size: Design.notchFontSize(capPixels: 17), weight: .semibold)
+    }
+
+    /// The bar's name under it, a touch larger than the ring's captions.
+    /// Cap height 12.5px.
+    static var barName: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 12.5), weight: .medium)
     }
 
     /// The captions under the numbers — which window, and when it resets.

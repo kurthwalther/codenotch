@@ -216,13 +216,18 @@ struct ProviderCell: View {
                     // the two look evenly spaced about the bar.
                     Text(secondary.map { "\(Int(($0.remaining * 100).rounded()))%" } ?? " ")
                         .font(Typography.barPercent)
-                        .foregroundStyle(Palette.textMid)
+                        .foregroundStyle(Palette.textBright)
                         .fixedSize()
                         .frame(height: NotchLayout.secondaryBarLabelHeight)
                     secondaryBar
                         .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
                         .padding(.top, NotchLayout.secondaryBarLabelGap)
-                    caption(snapshot.secondary?.shortLabel ?? " ")
+                    Text(snapshot.secondary?.shortLabel ?? " ")
+                        .font(Typography.barName)
+                        .foregroundStyle(Palette.textMid)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .frame(height: NotchLayout.secondaryBarNameHeight)
                         .padding(.top, NotchLayout.secondaryBarNameGap)
                 }
                 .padding(.bottom, NotchLayout.secondaryBarGap)
@@ -253,7 +258,7 @@ struct ProviderCell: View {
                 .frame(height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
-                .padding(.top, NotchLayout.captionGap)
+                .padding(.top, NotchLayout.nameToPercentGap)
             resetCaption
                 .padding(.top, NotchLayout.captionGap)
         }
