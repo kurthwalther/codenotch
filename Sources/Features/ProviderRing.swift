@@ -124,97 +124,46 @@ struct ProviderRing: View {
     }
 }
 
-/// The inner indicator: a short arc that spins while work is happening, and a
-/// full pulsing ring when something is blocked waiting on you.
+/// The inner indicator: a short arc that turns while work is happening, and a
+/// full ring that breathes when something is blocked waiting on you.
+///
+/// A Core Animation layer underneath, so the turning costs the app nothing
+/// per frame — see `ActivityArcLayer`. At rest it turns slowly; with motion
+/// reduced it is drawn once and left.
 private struct ActivityArc: View {
     let summary: ActivitySummary
     /// See `ProviderRing.scale`.
     var scale: CGFloat = Design.notchFactor
-    /// At rest the arc keeps turning, but slowly and at a third of the
-    /// frames: a sign of life at a cost too small to measure.
     var isResting: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// How much of the circle the moving arc covers.
-    private let arcFraction: CGFloat = 0.25
     /// One turn, and one breath, in seconds — and at rest, a slower turn.
     private static let turn: Double = 1.1
     private static let restingTurn: Double = 3.0
     private static let breath: Double = 1.8
-    /// Frames a second. Thirty is smooth to the eye; the display's own 120
-    /// would have SwiftUI re-evaluating the panel four times as often for
-    /// nothing anyone could see. At rest, ten.
-    private static let frame: Double = 1.0 / 30
-    private static let restingFrame: Double = 1.0 / 10
-
-    private var stroke: CGFloat { NotchLayout.activityStroke }
-    private var inset: CGFloat {
-        (NotchLayout.ringDiameter - NotchLayout.activityDiameter) / 2
-    }
 
     var body: some View {
         Group {
             switch summary.state {
-            case .working: spinner
-            case .waiting: pulse
-            case .idle:    EmptyView()
+            case .working:
+                ActivityArcLayer(mode: .spin, color: summary.color,
+                                 diameter: NotchLayout.activityDiameter,
+                                 lineWidth: NotchLayout.activityStroke,
+                                 period: isResting ? Self.restingTurn : Self.turn,
+                                 still: reduceMotion)
+            case .waiting:
+                ActivityArcLayer(mode: .pulse, color: summary.color,
+                                 diameter: NotchLayout.activityDiameter,
+                                 lineWidth: NotchLayout.activityStroke,
+                                 period: Self.breath,
+                                 still: reduceMotion || isResting)
+            case .idle:
+                EmptyView()
             }
         }
+        .frame(width: NotchLayout.activityDiameter, height: NotchLayout.activityDiameter)
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
-    }
-
-    private var arc: some View {
-        Circle()
-            .inset(by: inset)
-            .trim(from: 0, to: arcFraction)
-            .stroke(
-                summary.color,
-                style: StrokeStyle(lineWidth: stroke, lineCap: .round)
-            )
-    }
-
-    /// Driven by the clock rather than by an endless animation: the angle is
-    /// a function of the time, drawn thirty times a second — ten, and a
-    /// slower turn, at rest — and nothing has to be cancelled to stop: with
-    /// motion reduced it is simply drawn once.
-    @ViewBuilder
-    private var spinner: some View {
-        if reduceMotion {
-            arc.rotationEffect(.degrees(-90))
-        } else {
-            TimelineView(.animation(minimumInterval: isResting ? Self.restingFrame : Self.frame)) { context in
-                arc.rotationEffect(.degrees(Self.angle(at: context.date, resting: isResting)))
-            }
-        }
-    }
-
-    static func angle(at date: Date, resting: Bool = false) -> Double {
-        let period = resting ? restingTurn : turn
-        return (date.timeIntervalSinceReferenceDate / period).truncatingRemainder(dividingBy: 1) * 360
-    }
-
-    private var ring: some View {
-        Circle()
-            .inset(by: inset)
-            .stroke(summary.color, lineWidth: stroke)
-    }
-
-    @ViewBuilder
-    private var pulse: some View {
-        if reduceMotion || isResting {
-            ring
-        } else {
-            TimelineView(.animation(minimumInterval: Self.frame)) { context in
-                ring.opacity(Self.breathing(at: context.date))
-            }
-        }
-    }
-
-    /// Between 0.3 and 1, smoothly, once every breath.
-    static func breathing(at date: Date) -> Double {
-        let phase = (date.timeIntervalSinceReferenceDate / breath).truncatingRemainder(dividingBy: 1)
-        return 0.3 + 0.7 * (0.5 - 0.5 * cos(phase * 2 * .pi))
     }
 }
 
