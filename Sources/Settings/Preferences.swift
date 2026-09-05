@@ -50,6 +50,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(keepDisplayAwake, forKey: Keys.keepDisplay) }
     }
 
+    /// When to hold: only while an agent works, or while any session is open.
+    @Published var keepAwakeScope: KeepAwakeScope {
+        didSet { defaults.set(keepAwakeScope.rawValue, forKey: Keys.keepAwakeScope) }
+    }
+
     /// Which metered window each provider's ring draws, chosen by the user.
     /// Keyed by provider id; absent means the provider's own default.
     @Published var ringWindows: [String: String] {
@@ -103,6 +108,7 @@ final class Preferences: ObservableObject {
         static let lastSeenVersion = "lastSeenVersion"
         static let keepAwake = "keepAwakeWhileWorking"
         static let keepDisplay = "keepDisplayAwake"
+        static let keepAwakeScope = "keepAwakeScope"
         static let ringWindows = "ringWindows"
         static let secondaryWindows = "secondaryWindows"
         static let notchScale = "notchScale"
@@ -170,6 +176,11 @@ final class Preferences: ObservableObject {
         self.keepAwakeWhileWorking = defaults.object(forKey: Keys.keepAwake) as? Bool ?? true
         // The display is a separate question — the agent does not need it lit.
         self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
+        // While open by default: the reason to hold a Mac awake at all is to
+        // keep driving it from elsewhere, and from elsewhere the agent spends
+        // most of its time waiting on you.
+        self.keepAwakeScope = defaults.string(forKey: Keys.keepAwakeScope)
+            .flatMap(KeepAwakeScope.init(rawValue:)) ?? .whileOpen
         self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
         self.secondaryWindows = defaults.dictionary(forKey: Keys.secondaryWindows) as? [String: String] ?? [:]
         // Smaller than the frame by default: the notch carries a ring, a

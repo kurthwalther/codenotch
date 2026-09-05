@@ -45,6 +45,8 @@ final class NotchViewModel: ObservableObject {
     @Published var isHoveringAwake = false
     /// Mirrors the preference, so the handle can show which way it is set.
     @Published var keepAwakeEnabled = true
+    /// And when it holds, so the caption can say what it is waiting for.
+    @Published var keepAwakeScope: KeepAwakeScope = .whileWorking
     /// True while the Mac is actually being held awake right now.
     @Published var isHoldingAwake = false
 
@@ -58,7 +60,11 @@ final class NotchViewModel: ObservableObject {
     var awakeDim: Bool { keepAwakeEnabled && !isHoldingAwake }
     var awakeCaption: String {
         guard keepAwakeEnabled else { return "Off" }
-        return isHoldingAwake ? "Keeping awake" : "No agents running"
+        if isHoldingAwake { return "Keeping awake" }
+        switch keepAwakeScope {
+        case .whileWorking: return "No agents running"
+        case .whileOpen:    return "No sessions open"
+        }
     }
 
     /// Bumped whenever a measurement behind the layout changes — the notch's

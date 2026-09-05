@@ -82,6 +82,9 @@ final class AwakeOrbTests: XCTestCase {
         XCTAssertEqual(m.awakeCaption, "No agents running")
         XCTAssertTrue(m.awakeDim, "on with nothing to hold is shown faded")
 
+        m.keepAwakeScope = .whileOpen
+        XCTAssertEqual(m.awakeCaption, "No sessions open", "while open, it is sessions that are missing")
+
         m.isHoldingAwake = true
         XCTAssertEqual(m.awakeSymbol, "cup.and.saucer.fill")
         XCTAssertEqual(m.awakeCaption, "Keeping awake")

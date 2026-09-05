@@ -38,6 +38,24 @@ final class KeepAwakeTests: XCTestCase {
         )
     }
 
+    /// While open, a session waiting on you — or merely idle — holds the Mac:
+    /// that is the remote case, where the agent spends its time waiting.
+    func testWhileOpenAnySessionHoldsTheMac() {
+        XCTAssertEqual(
+            KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+                             sessions: ["claude": [session(.waiting)]]),
+            .system
+        )
+        XCTAssertEqual(
+            KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+                             sessions: ["claude": [session(.idle)]]),
+            .system
+        )
+        XCTAssertNil(KeepAwake.wanted(enabled: true, display: false, scope: .whileOpen,
+                                      sessions: ["claude": []]),
+                     "no session at all, and the Mac may sleep")
+    }
+
     func testSwitchedOffHoldsNothing() {
         XCTAssertNil(KeepAwake.wanted(enabled: false, display: true,
                                       sessions: ["claude": [session(.busy)]]))

@@ -129,6 +129,17 @@ struct SettingsView: View {
                 // that ends on its own, so the hold ends with it.
                 Toggle("Keep this Mac awake while an agent is working",
                        isOn: $preferences.keepAwakeWhileWorking)
+                Picker("Hold", selection: $preferences.keepAwakeScope) {
+                    ForEach(KeepAwakeScope.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!preferences.keepAwakeWhileWorking)
+                .padding(.leading, 20)
+                Text(preferences.keepAwakeScope.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 20)
                 Toggle("Keep the display on as well", isOn: $preferences.keepDisplayAwake)
                     .disabled(!preferences.keepAwakeWhileWorking)
                     .padding(.leading, 20)
@@ -221,10 +232,8 @@ struct SettingsView: View {
     /// closed MacBook regardless, unless it is on power with an external
     /// display attached, and no app can change that without root.
     static let keepAwakeCopy =
-        "Held only while a session is busy, and released as soon as every agent "
-        + "is idle or waiting on you. Closing the lid still sleeps a MacBook "
-        + "unless it is plugged in with an external display — macOS does not "
-        + "let an app override that."
+        "Closing the lid still sleeps a MacBook unless it is plugged in with an "
+        + "external display — macOS does not let an app override that."
 
     /// Nothing to read from anywhere. On a first launch that is the normal
     /// state, and it is the only moment the sheet has something to explain.

@@ -204,12 +204,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // is working and what holds the Mac awake can never disagree.
             let keepAwake = KeepAwake()
             self.keepAwake = keepAwake
-            Publishers.CombineLatest3(
+            Publishers.CombineLatest4(
                 preferences.$keepAwakeWhileWorking,
                 preferences.$keepDisplayAwake,
+                preferences.$keepAwakeScope,
                 controller.model.$sessions
             )
-            .map { KeepAwake.wanted(enabled: $0, display: $1, sessions: $2) }
+            .map { KeepAwake.wanted(enabled: $0, display: $1, scope: $2, sessions: $3) }
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { keepAwake.hold($0) }
@@ -222,6 +223,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$keepAwakeWhileWorking
                 .receive(on: RunLoop.main)
                 .sink { [weak controller] in controller?.model.keepAwakeEnabled = $0 }
+                .store(in: &cancellables)
+            preferences.$keepAwakeScope
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.model.keepAwakeScope = $0 }
                 .store(in: &cancellables)
             keepAwake.$held
                 .receive(on: RunLoop.main)

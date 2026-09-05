@@ -147,9 +147,11 @@ enum NotchLayout {
     // A second window in the same cell: a miniature bar *above* the ring, so
     // the number under the ring stays the ring's and the bar reads as the
     // lesser gauge.
-    static var secondaryBarWidth: CGFloat { ringDiameter * 0.45 }
+    static var secondaryBarWidth: CGFloat { ringDiameter * 0.52 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
-    static var secondaryBarGap: CGFloat { Design.npx(22) }
+    /// The same gap the percent keeps below the ring, so the cell reads as
+    /// bar, ring and number evenly spaced.
+    static var secondaryBarGap: CGFloat { ringLabelGap }
     /// Whether every cell reserves room for that bar — true while any provider
     /// has a second window, so the stack stays uniform: cells with and without
     /// one keep the same pitch, and the hover bands keep lining up with the
