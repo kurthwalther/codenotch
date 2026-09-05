@@ -35,6 +35,8 @@ struct ProviderRing: View {
     /// Left alone for a while under Always show: the activity arc fades
     /// further than the rest, to a whisper.
     var isResting: Bool = false
+    /// How far what shines fades at rest, from Settings.
+    var restingOpacity: Double = NotchViewModel.restingOpacity
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.usageThresholds) private var thresholds
@@ -82,20 +84,21 @@ struct ProviderRing: View {
                         // that sweeps reads as a measurement being taken.
                         .animation(NotchMotion.reading, value: sweep)
                         .animation(NotchMotion.reading, value: band)
-                        .opacity(isResting ? NotchViewModel.restingOpacity : 1)
+                        .opacity(isResting ? restingOpacity : 1)
                 }
 
                 ProviderGlyphView(glyph: glyph, symbol: symbol, size: NotchLayout.glyphSize)
                     .foregroundStyle(Palette.textPrimary)
                     // A spent limit dims its glyph so the ring reads as "waiting".
                     .opacity(band == .exhausted ? 0.35 : 1)
-                    .opacity(isResting ? NotchViewModel.restingOpacity : 1)
+                    .opacity(isResting ? restingOpacity : 1)
             }
             .opacity(isStale ? 0.45 : 1)
 
             if let activity, activity.state != .idle {
                 ActivityArc(summary: activity, scale: scale, isResting: isResting)
-                    .opacity(isResting ? 0.3 : 1)
+                    // Further than the rest: about half again of the fade.
+                    .opacity(isResting ? restingOpacity * 0.5 : 1)
             }
         }
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
@@ -181,6 +184,11 @@ struct ProviderCell: View {
     var scale: CGFloat = Design.notchFactor
     /// See `ProviderRing.isResting`.
     var isResting: Bool = false
+    /// How far what shines fades at rest.
+    var restingOpacity: Double = NotchViewModel.restingOpacity
+    /// Which captions are drawn — carried as values so a change re-renders.
+    var showsNames: Bool = NotchLayout.showsWindowNames
+    var showsReset: Bool = NotchLayout.showsResetTime
     /// For a number that counts down to the reset.
     var now: Date = Date()
 
@@ -208,13 +216,15 @@ struct ProviderCell: View {
                     secondaryBar
                         .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
                         .padding(.top, NotchLayout.secondaryBarLabelGap)
-                    Text(snapshot.secondary?.shortLabel ?? " ")
-                        .font(Typography.barName)
-                        .foregroundStyle(Palette.textMid)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .frame(height: NotchLayout.secondaryBarNameHeight)
-                        .padding(.top, NotchLayout.secondaryBarNameGap)
+                    if showsNames {
+                        Text(snapshot.secondary?.shortLabel ?? " ")
+                            .font(Typography.barName)
+                            .foregroundStyle(Palette.textMid)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .frame(height: NotchLayout.secondaryBarNameHeight)
+                            .padding(.top, NotchLayout.secondaryBarNameGap)
+                    }
                 }
                 .padding(.bottom, NotchLayout.secondaryBarGap)
             }
@@ -227,13 +237,17 @@ struct ProviderCell: View {
                 activity: activity,
                 isRefreshing: isRefreshing,
                 scale: scale,
-                isResting: isResting
+                isResting: isResting,
+                restingOpacity: restingOpacity
             )
             // Which window the number is, between the ring and the number;
             // then the number; then when it comes back. Small lines, there
-            // to be found rather than read first.
-            caption(snapshot.headline?.shortLabel ?? " ")
-                .padding(.top, NotchLayout.ringCaptionGap)
+            // to be found rather than read first — and each can be switched
+            // off in Settings.
+            if showsNames {
+                caption(snapshot.headline?.shortLabel ?? " ")
+                    .padding(.top, NotchLayout.ringCaptionGap)
+            }
             Text(percentText)
                 .font(Typography.percent)
                 .foregroundStyle(Palette.textPrimary)
@@ -245,10 +259,12 @@ struct ProviderCell: View {
                 .frame(height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
-                .opacity(isResting ? NotchViewModel.restingOpacity : 1)
-                .padding(.top, NotchLayout.nameToPercentGap)
-            resetCaption
-                .padding(.top, NotchLayout.captionGap)
+                .opacity(isResting ? restingOpacity : 1)
+                .padding(.top, showsNames ? NotchLayout.nameToPercentGap : NotchLayout.ringLabelGap)
+            if showsReset {
+                resetCaption
+                    .padding(.top, NotchLayout.captionGap)
+            }
         }
         .frame(height: NotchLayout.cellExtent)
     }
@@ -295,7 +311,7 @@ struct ProviderCell: View {
                     .fill(secondary.band(thresholds).color)
                     .frame(width: max(height, width * CGFloat(secondary.remaining)))
                     .animation(NotchMotion.reading, value: secondary)
-                    .opacity(isResting ? NotchViewModel.restingOpacity : 1)
+                    .opacity(isResting ? restingOpacity : 1)
             }
         } else {
             Color.clear

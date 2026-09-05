@@ -255,6 +255,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .receive(on: RunLoop.main)
                 .sink { [weak controller] in controller?.model.showsShadow = $0 }
                 .store(in: &cancellables)
+            preferences.$showsWindowNames.combineLatest(preferences.$showsResetTime)
+                .removeDuplicates { $0 == $1 }
+                .sink { [weak controller] names, reset in
+                    controller?.apply(showsWindowNames: names, showsResetTime: reset)
+                }
+                .store(in: &cancellables)
+            preferences.$restDim
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.model.restDim = $0.opacity }
+                .store(in: &cancellables)
             preferences.$hideInFullscreen
                 .removeDuplicates()
                 .sink { [weak controller] in controller?.apply(hidesInFullscreen: $0) }

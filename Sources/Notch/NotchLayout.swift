@@ -177,9 +177,23 @@ enum NotchLayout {
     static var captionLineHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
     }
+    /// Which captions are drawn, from Settings. Set alongside the layout so
+    /// every cell agrees, like the room for the bar.
+    nonisolated(unsafe) static var showsWindowNames = true
+    nonisolated(unsafe) static var showsResetTime = true
+
     /// What the captions add to the frame's cell of ring, gap and number.
+    /// With the names off the number sits where the frame put it; with the
+    /// reset off there is no line under it.
     static var captionSpace: CGFloat {
-        ringCaptionGap + captionLineHeight + nameToPercentGap + captionGap + resetLineHeight - ringLabelGap
+        var space: CGFloat = 0
+        if showsWindowNames {
+            space += ringCaptionGap + captionLineHeight + nameToPercentGap - ringLabelGap
+        }
+        if showsResetTime {
+            space += captionGap + resetLineHeight
+        }
+        return space
     }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with
@@ -195,7 +209,8 @@ enum NotchLayout {
     static var secondaryBarSpace: CGFloat {
         reservesSecondaryBar
             ? secondaryBarLabelHeight + secondaryBarLabelGap + secondaryBarHeight
-                + secondaryBarNameGap + secondaryBarNameHeight + secondaryBarGap
+                + (showsWindowNames ? secondaryBarNameGap + secondaryBarNameHeight : 0)
+                + secondaryBarGap
             : 0
     }
     /// The gap between the caption and the keep-awake handle, and inside it.

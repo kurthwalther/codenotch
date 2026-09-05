@@ -190,6 +190,16 @@ final class NotchWindowController {
         relocate()
     }
 
+    /// Which captions the cells draw. Changes the cell's height for every
+    /// cell at once, so the panel is re-placed.
+    func apply(showsWindowNames: Bool, showsResetTime: Bool) {
+        guard NotchLayout.showsWindowNames != showsWindowNames
+                || NotchLayout.showsResetTime != showsResetTime else { return }
+        NotchLayout.showsWindowNames = showsWindowNames
+        NotchLayout.showsResetTime = showsResetTime
+        relayout()
+    }
+
     func apply(hidesInFullscreen: Bool) {
         self.hidesInFullscreen = hidesInFullscreen
         checkFullscreen(force: true)

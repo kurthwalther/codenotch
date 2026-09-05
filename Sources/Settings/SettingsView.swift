@@ -64,6 +64,26 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Toggle("Show window names", isOn: $preferences.showsWindowNames)
+                Toggle("Show the reset time", isOn: $preferences.showsResetTime)
+                Text("The small captions on each cell: which window a gauge is, and "
+                     + "when the ring's window comes back.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 10) {
+                    Text("Rest dims")
+                    Slider(value: Binding(
+                        get: { Double(preferences.restDim.rawValue) },
+                        set: { preferences.restDim = Preferences.RestDim(rawValue: Int($0.rounded())) ?? .medium }
+                    ), in: 0...2, step: 1)
+                    Text(preferences.restDim.title)
+                        .frame(width: 56, alignment: .trailing)
+                        .foregroundStyle(.secondary)
+                }
+                .disabled(preferences.notchVisibility == .onHover || preferences.notchVisibility == .hidden)
+
                 Toggle("Shadow", isOn: $preferences.notchShadow)
                 Text("A soft shadow under the notch and its card while the pointer is "
                      + "on them, or a note or conversation beside them is open — the way "

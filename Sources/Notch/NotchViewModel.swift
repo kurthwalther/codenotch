@@ -101,6 +101,9 @@ final class NotchViewModel: ObservableObject {
     /// Where the colours change, from Settings.
     @Published var thresholds = UsageThresholds.standard
 
+    /// How far what shines fades at rest, from Settings.
+    @Published var restDim: Double = NotchViewModel.restingOpacity
+
     /// A soft shadow under the notch and its card, from Settings — shown
     /// only while the pointer is on the notch or its card, so a notch left
     /// alone lies flat.

@@ -334,3 +334,50 @@ final class RestIsDueTests: XCTestCase {
                                                        holdUntil: .distantPast, restAfter: 10, attended: false))
     }
 }
+
+/// The last two settings: captions that can be switched off, and a rest
+/// that dims in three steps.
+@MainActor
+final class LastSettingsTests: XCTestCase {
+    func testHiddenCaptionsGiveTheirRoomBack() {
+        let full = NotchLayout.cellExtent
+        defer { NotchLayout.showsWindowNames = true; NotchLayout.showsResetTime = true }
+        NotchLayout.showsResetTime = false
+        XCTAssertEqual(full - NotchLayout.cellExtent, NotchLayout.captionGap + NotchLayout.resetLineHeight, accuracy: 0.001)
+        NotchLayout.showsWindowNames = false
+        // Both off: the frame's own cell, ring, gap and number.
+        XCTAssertEqual(NotchLayout.cellExtent,
+                       NotchLayout.secondaryBarSpace + NotchLayout.ringDiameter + NotchLayout.ringLabelGap + NotchLayout.percentLineHeight,
+                       accuracy: 0.001)
+    }
+
+    func testTheBarsNameGoesWithTheNames() {
+        NotchLayout.reservesSecondaryBar = true
+        defer { NotchLayout.reservesSecondaryBar = false; NotchLayout.showsWindowNames = true }
+        let withName = NotchLayout.secondaryBarSpace
+        NotchLayout.showsWindowNames = false
+        XCTAssertEqual(withName - NotchLayout.secondaryBarSpace,
+                       NotchLayout.secondaryBarNameGap + NotchLayout.secondaryBarNameHeight, accuracy: 0.001)
+    }
+
+    func testTheRestDimsInThreeStepsAndIsRemembered() {
+        XCTAssertEqual(Preferences.RestDim.allCases.count, 3)
+        XCTAssertGreaterThan(Preferences.RestDim.light.opacity, Preferences.RestDim.medium.opacity)
+        XCTAssertGreaterThan(Preferences.RestDim.medium.opacity, Preferences.RestDim.strong.opacity)
+        XCTAssertEqual(Preferences.RestDim.medium.opacity, NotchViewModel.restingOpacity, accuracy: 0.0001)
+
+        let name = "dim-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let first = Preferences(defaults: defaults)
+        XCTAssertEqual(first.restDim, .medium)
+        XCTAssertTrue(first.showsWindowNames)
+        XCTAssertTrue(first.showsResetTime)
+        first.restDim = .strong
+        first.showsWindowNames = false
+        let second = Preferences(defaults: defaults)
+        XCTAssertEqual(second.restDim, .strong)
+        XCTAssertFalse(second.showsWindowNames)
+        XCTAssertTrue(second.showsResetTime)
+    }
+}

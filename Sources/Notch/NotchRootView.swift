@@ -178,6 +178,9 @@ struct NotchRootView: View {
                 reservesBar: NotchLayout.reservesSecondaryBar,
                 scale: Design.notchFactor,
                 isResting: model.isResting,
+                restingOpacity: model.restDim,
+                showsNames: NotchLayout.showsWindowNames,
+                showsReset: NotchLayout.showsResetTime,
                 now: model.now
             )
                 // Pinned to what the cell claims along the stack, or the drawn

@@ -101,6 +101,46 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
     }
 
+    /// The captions naming each gauge's window — "Session", "Fable".
+    @Published var showsWindowNames: Bool {
+        didSet { defaults.set(showsWindowNames, forKey: Keys.windowNames) }
+    }
+
+    /// The reset time under the ring's number.
+    @Published var showsResetTime: Bool {
+        didSet { defaults.set(showsResetTime, forKey: Keys.resetTime) }
+    }
+
+    /// How far the notch fades at rest: one of three steps.
+    @Published var restDim: RestDim {
+        didSet { defaults.set(restDim.rawValue, forKey: Keys.restDim) }
+    }
+
+    enum RestDim: Int, CaseIterable, Identifiable {
+        case light = 0
+        case medium = 1
+        case strong = 2
+
+        var id: Int { rawValue }
+
+        var title: String {
+            switch self {
+            case .light:  return "Light"
+            case .medium: return "Medium"
+            case .strong: return "Strong"
+            }
+        }
+
+        /// What shines is left at this much of its strength.
+        var opacity: Double {
+            switch self {
+            case .light:  return 0.8
+            case .medium: return 0.65
+            case .strong: return 0.45
+            }
+        }
+    }
+
     /// A soft shadow under the notch and its cards.
     @Published var notchShadow: Bool {
         didSet { defaults.set(notchShadow, forKey: Keys.shadow) }
@@ -171,6 +211,9 @@ final class Preferences: ObservableObject {
         static let restAfter = "restAfterSeconds"
         static let autoScope = "autoScope"
         static let shadow = "notchShadow"
+        static let windowNames = "showsWindowNames"
+        static let resetTime = "showsResetTime"
+        static let restDim = "restDim"
         static let noticeSeconds = "noticeSeconds"
     }
 
@@ -256,6 +299,9 @@ final class Preferences: ObservableObject {
         self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
         self.noticesEnabled = defaults.object(forKey: Keys.notices) as? Bool ?? true
         self.notchShadow = defaults.bool(forKey: Keys.shadow)
+        self.showsWindowNames = defaults.object(forKey: Keys.windowNames) as? Bool ?? true
+        self.showsResetTime = defaults.object(forKey: Keys.resetTime) as? Bool ?? true
+        self.restDim = (defaults.object(forKey: Keys.restDim) as? Int).flatMap(RestDim.init(rawValue:)) ?? .medium
         self.autoScope = defaults.string(forKey: Keys.autoScope)
             .flatMap(NotchVisibility.AutoScope.init(rawValue:)) ?? .session
         let rest = defaults.object(forKey: Keys.restAfter) as? Double ?? 10
