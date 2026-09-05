@@ -458,6 +458,8 @@ private struct BlockedRow: View {
 private struct SessionRow: View {
     let session: AgentSession
     let now: Date
+    /// The pointer is on it, and a click would take you to the session.
+    var isHovered: Bool = false
 
     private var stateColor: Color {
         switch session.state {
@@ -496,6 +498,15 @@ private struct SessionRow: View {
             )
             .padding(.top, NotchLayout.sessionRowGap)
         }
+        // A quiet plate behind the row, so it reads as something you can
+        // press. Drawn in the background, so nothing in the row moves.
+        .background(
+            RoundedRectangle(cornerRadius: Design.px(10), style: .continuous)
+                .fill(Palette.ringTrack)
+                .padding(-Design.px(10))
+                .opacity(isHovered ? 1 : 0)
+                .animation(.easeOut(duration: 0.12), value: isHovered)
+        )
     }
 }
 
@@ -506,18 +517,9 @@ private struct SessionList: View {
     let now: Date
     /// How many rows this screen has room for; the rest are counted.
     let cap: Int
+    var hoveredSessionID: String?
 
-    /// Busy sessions first, so what is hidden is what matters least.
-    private var ordered: [AgentSession] {
-        summary.sessions.sorted { a, b in
-            let rank: (AgentSession) -> Int = {
-                switch $0.state { case .waiting: 0; case .busy: 1; case .idle: 2 }
-            }
-            return rank(a) == rank(b) ? a.since > b.since : rank(a) < rank(b)
-        }
-    }
-
-    private var shown: [AgentSession] { Array(ordered.prefix(max(0, cap))) }
+    private var shown: [AgentSession] { Array(summary.ordered.prefix(max(0, cap))) }
     private var hidden: Int { max(0, summary.sessions.count - shown.count) }
 
     var body: some View {
@@ -531,7 +533,8 @@ private struct SessionList: View {
             // are counted rather than drawn: the card is clipped, not scrolled,
             // so anything past the budget silently pushes the title off the top.
             ForEach(Array(shown.enumerated()), id: \.element.id) { index, session in
-                SessionRow(session: session, now: now)
+                SessionRow(session: session, now: now,
+                           isHovered: session.id == hoveredSessionID)
                     .padding(.top, NotchLayout.blockSpacing)
             }
 
@@ -556,6 +559,8 @@ struct TooltipCard: View {
     /// How many sessions this screen has room to list. Solved from the display
     /// rather than fixed, so a big screen hides nothing.
     var sessionCap: Int = NotchLayout.defaultSessionCap
+    /// The listed session under the pointer, if a click would go somewhere.
+    var hoveredSessionID: String?
 
     /// The same figure the hover region uses, so what is drawn and what is
     /// reachable can never drift apart.
@@ -579,7 +584,8 @@ struct TooltipCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ProviderTooltip(snapshot: snapshot, now: now)
                     if let activity {
-                        SessionList(summary: activity, now: now, cap: sessionCap)
+                        SessionList(summary: activity, now: now, cap: sessionCap,
+                                    hoveredSessionID: hoveredSessionID)
                     }
                 }
                 // An identity, so one provider's rows are never interpolated

@@ -210,6 +210,22 @@ final class UsageStore: ObservableObject {
         }
     }
 
+    /// Refetch one provider if its reading is older than `age` — for the
+    /// moment the pointer arrives on its cell. Between fetches the number can
+    /// be five idle minutes old, and the moment someone looks is exactly the
+    /// moment it should be fresh. Once a minute at most per provider, so a
+    /// pointer wandering across the stack cannot turn into a burst of calls.
+    func refreshIfStale(providerID: String, olderThan age: TimeInterval, now: Date = Date()) {
+        guard let last = lastGood[providerID]?.fetchedAt,
+              now.timeIntervalSince(last) > age,
+              now.timeIntervalSince(hoverRefreshed[providerID] ?? .distantPast) > 60
+        else { return }
+        hoverRefreshed[providerID] = now
+        refresh(providerID: providerID)
+    }
+
+    private var hoverRefreshed: [String: Date] = [:]
+
     /// Sign out of one provider: discard anything of its account that this app
     /// is holding, and stop reading it.
     ///

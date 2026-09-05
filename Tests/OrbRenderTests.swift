@@ -14,11 +14,11 @@ final class OrbRenderTests: XCTestCase {
                     SettingsOrb(isHovered: true, edge: edge)
                         .frame(width: 140, height: 90)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer.fill",
-                                atStart: true, spin: 0, tint: Palette.ample,
+                                atStart: true, spin: 0, tint: Palette.cappuccino,
                                 caption: "Keeping awake")
                         .frame(width: 140, height: 90)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer.fill",
-                                atStart: true, spin: 0, tint: Palette.ample, dim: true,
+                                atStart: true, spin: 0, tint: Palette.cappuccino, dim: true,
                                 caption: "No agents running")
                         .frame(width: 140, height: 90)
                     SettingsOrb(isHovered: true, edge: edge, symbol: "cup.and.saucer",

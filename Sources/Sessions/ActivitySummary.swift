@@ -50,4 +50,17 @@ struct ActivitySummary: Equatable {
     }
 
     var waitingSessions: [AgentSession] { sessions.filter { $0.state == .waiting } }
+
+    /// The order the tooltip lists them in: anything waiting on you first,
+    /// then what is busy, then the idle ones, newest first within each — so
+    /// what a short list hides is what matters least. Kept here so the card
+    /// that draws the rows and the controller that hit-tests them agree.
+    var ordered: [AgentSession] {
+        sessions.sorted { a, b in
+            let rank: (AgentSession) -> Int = {
+                switch $0.state { case .waiting: 0; case .busy: 1; case .idle: 2 }
+            }
+            return rank(a) == rank(b) ? a.since > b.since : rank(a) < rank(b)
+        }
+    }
 }

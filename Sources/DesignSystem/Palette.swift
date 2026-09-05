@@ -16,6 +16,11 @@ enum Palette {
 
     static let textPrimary   = Color.white
     static let textSecondary = Color(hex: 0x808080)
+
+    /// The keep-awake cup while it is on: coffee with milk, not a status
+    /// green — the cup is a switch, not a reading, and green already means
+    /// "plenty left" one ring down.
+    static let cappuccino    = Color(hex: 0xD8B48A)
 }
 
 extension Color {

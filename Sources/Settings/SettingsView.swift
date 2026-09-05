@@ -91,6 +91,13 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Toggle("Hide while an app is full screen", isOn: $preferences.hideInFullscreen)
+                Text("A film or a slide deck is the one time a reading on the edge is "
+                     + "in the way. The notch comes back when the app does.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 // "App icon", not "Icon": the two rows above it are about the
                 // notch, and on its own the word would read as another of them.
                 Picker("App icon", selection: $preferences.appPresence) {

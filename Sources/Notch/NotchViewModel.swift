@@ -10,6 +10,10 @@ final class NotchViewModel: ObservableObject {
     /// being one.
     @Published var sessions: [String: [AgentSession]] = [:]
 
+    /// Which listed session the cursor is over, when it is one a click can
+    /// take you to. Driven from the window controller like `hoveredIndex`.
+    @Published var hoveredSessionID: String?
+
     /// Which cell the cursor is over, if any. Driven from the window controller
     /// rather than SwiftUI's `.onHover`: the panel ignores mouse events until
     /// the cursor is over it, so SwiftUI cannot see the crossing that turns
@@ -50,7 +54,7 @@ final class NotchViewModel: ObservableObject {
     /// words, including the one case the cup alone could not: on, but with
     /// nothing running, so the Mac may sleep after all.
     var awakeSymbol: String { keepAwakeEnabled ? "cup.and.saucer.fill" : "cup.and.saucer" }
-    var awakeTint: Color { keepAwakeEnabled ? Palette.ample : Palette.textSecondary }
+    var awakeTint: Color { keepAwakeEnabled ? Palette.cappuccino : Palette.textSecondary }
     var awakeDim: Bool { keepAwakeEnabled && !isHoldingAwake }
     var awakeCaption: String {
         guard keepAwakeEnabled else { return "Off" }

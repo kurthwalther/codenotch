@@ -181,6 +181,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.start()
             controller.onRefresh = { [weak store] in store?.refreshNow() }
             controller.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
+            // Two minutes: older than that and the number is from before the
+            // last thing the agent did.
+            controller.onHoverProvider = { [weak store] id in
+                store?.refreshIfStale(providerID: id, olderThan: 2 * 60)
+            }
+            controller.onFocusSession = { SessionFocus.focus($0) }
+            controller.rememberedPin = preferences.notchPinned
+            controller.onPinChanged = { preferences.notchPinned = $0 }
+            preferences.$hideInFullscreen
+                .removeDuplicates()
+                .sink { [weak controller] in controller?.apply(hidesInFullscreen: $0) }
+                .store(in: &cancellables)
             store.$refreshing
                 .receive(on: RunLoop.main)
                 .sink { [weak controller] ids in controller?.model.refreshing = ids }

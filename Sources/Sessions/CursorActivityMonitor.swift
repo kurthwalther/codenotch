@@ -90,7 +90,8 @@ final class CursorActivityMonitor: ObservableObject, AgentActivityMonitor {
             detail: (head["subtitle"] as? String) ?? "Cursor",
             state: state,
             waitingFor: blocked ? "needs your input" : nil,
-            since: millis.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date()
+            since: millis.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(),
+            locator: SessionLocator(appBundleID: "com.todesktop.230313mzl4w4u92")
         )
     }
 }

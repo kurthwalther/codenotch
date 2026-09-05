@@ -29,6 +29,21 @@ final class NotchWindowController {
     var onChooseRingWindow: ((_ providerID: String, _ windowID: String) -> Void)?
     /// Give a provider a second window, or none, chosen from the menu.
     var onChooseSecondaryWindow: ((_ providerID: String, _ windowID: String?) -> Void)?
+    /// Take the user to a listed session, asked for by clicking its row.
+    var onFocusSession: ((AgentSession) -> Void)?
+    /// The pointer has arrived on a provider's cell — the moment its reading
+    /// is about to be looked at.
+    var onHoverProvider: ((String) -> Void)?
+    /// The pin was made or released by hand, so it can be remembered.
+    var onPinChanged: ((Bool) -> Void)?
+    /// The pin to come back with, from last time. Read once, the first time
+    /// the visibility is applied.
+    var rememberedPin = false
+    private var hasAppliedVisibility = false
+    /// Whether to get out of the way of a full-screen app.
+    private var hidesInFullscreen = false
+    private var hiddenForFullscreen = false
+    private var fullscreenTick = 0
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
     private var secondaryChoices: [(providerID: String, windowID: String?)] = []
@@ -124,6 +139,33 @@ final class NotchWindowController {
         model.layoutVersion += 1
         guard panel != nil else { return }
         relocate()
+    }
+
+    func apply(hidesInFullscreen: Bool) {
+        self.hidesInFullscreen = hidesInFullscreen
+        checkFullscreen(force: true)
+    }
+
+    /// Asked on the cursor poll, a few times a second at most: the window
+    /// list is cheap but not free, and a full-screen app does not come and
+    /// go faster than that.
+    private func checkFullscreen(force: Bool = false) {
+        fullscreenTick += 1
+        guard force || fullscreenTick % 3 == 0 else { return }
+        let screen = panel?.screen ?? NSScreen.main
+        let hidden = hidesInFullscreen && screen.map(FullscreenDetector.isFullscreenAppFrontmost(on:)) == true
+        guard hidden != hiddenForFullscreen, let panel else { return }
+        hiddenForFullscreen = hidden
+        if hidden {
+            model.hoveredIndex = nil
+            model.hoveredSessionID = nil
+            setPointing(false)
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            panel.animator().alphaValue = hidden ? 0 : 1
+        }
+        updateInteractiveRects()
     }
 
     func relocate(cellCount: Int? = nil) {
@@ -276,8 +318,56 @@ final class NotchWindowController {
         }
         hostingView?.interactiveRects = rects
         if let panel {
-            panel.ignoresMouseEvents = !rects.contains { $0.contains(localCursor(in: panel.frame)) }
+            // Out of the way of a full-screen app means out of the way of the
+            // pointer too, or an invisible notch would still swallow clicks.
+            panel.ignoresMouseEvents = hiddenForFullscreen
+                || !rects.contains { $0.contains(localCursor(in: panel.frame)) }
         }
+    }
+
+    /// The card alone, in panel coordinates: what `tooltipRect` covers less
+    /// the tail and the gap. Its rows are laid out top-down whichever edge the
+    /// notch is on, so a click is placed by its distance from the top.
+    private func cardRect(index: Int) -> CGRect? {
+        guard model.snapshots.indices.contains(index) else { return nil }
+        let snapshot = model.snapshots[index]
+        let cardHeight = NotchLayout.cardHeight(
+            windowCount: snapshot.windows.count,
+            sessionCount: model.activity(for: snapshot.id)?.sessions.count ?? 0,
+            sessionCap: model.sessionCap,
+            statusMessage: snapshot.statusMessage,
+            blockMessage: snapshot.block?.summary(now: model.now)
+        )
+        let cardAcross = model.edge.isVertical ? NotchLayout.cardWidth : cardHeight
+        let cardAlong = model.edge.isVertical ? cardHeight : NotchLayout.cardWidth
+        let centre = model.slack + model.ringCenter(index: index)
+        return placement.rect(
+            along: centre - cardAlong / 2,
+            across: model.contentInset + NotchLayout.bodyDepth(for: model.edge)
+                + NotchLayout.tailGap + NotchLayout.tailLength,
+            length: cardAlong,
+            depth: cardAcross
+        )
+    }
+
+    /// The listed session under a point, if a click there would go somewhere.
+    private func session(at local: CGPoint) -> AgentSession? {
+        guard model.isExpanded, let index = model.hoveredIndex,
+              let card = cardRect(index: index), card.contains(local),
+              let activity = model.activity(for: model.snapshots[index].id)
+        else { return nil }
+        let snapshot = model.snapshots[index]
+        let ranges = NotchLayout.sessionRowRanges(
+            windowCount: snapshot.windows.count,
+            sessionCount: activity.sessions.count,
+            sessionCap: model.sessionCap,
+            statusMessage: snapshot.statusMessage,
+            blockMessage: snapshot.block?.summary(now: model.now)
+        )
+        let offset = local.y - card.minY
+        guard let row = ranges.firstIndex(where: { $0.contains(offset) }) else { return nil }
+        let session = activity.ordered[row]
+        return session.locator == nil ? nil : session
     }
 
     // MARK: - Cursor tracking
@@ -296,6 +386,7 @@ final class NotchWindowController {
                 // the screen list, and doing that per event would be work at
                 // 60Hz to answer a question that changes twice a minute.
                 self?.followUsableAreaIfItMoved()
+                self?.checkFullscreen()
                 self?.cursorMoved()
             }
         }
@@ -355,9 +446,13 @@ final class NotchWindowController {
         if model.isHoveringAwake != overAwake {
             model.isHoveringAwake = overAwake
         }
+        let overSession = session(at: local)
+        if model.hoveredSessionID != overSession?.id {
+            model.hoveredSessionID = overSession?.id
+        }
         setPointing(
             Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target)
-                || overHandle || overAwake
+                || overHandle || overAwake || overSession != nil
         )
 
         if let target {
@@ -367,6 +462,9 @@ final class NotchWindowController {
                 withAnimation(.spring(response: 0.18, dampingFraction: 0.85)) {
                     model.hoveredIndex = target
                 }
+                // Arriving on a cell is the moment its number is about to be
+                // read, and the moment a stale one is worth refreshing.
+                onHoverProvider?(model.snapshots[target].id)
             }
         } else if model.hoveredIndex != nil, clearHoverWork == nil {
             let work = DispatchWorkItem { [weak self] in
@@ -445,6 +543,10 @@ final class NotchWindowController {
         }
         if isOverAwakeHandle(local) {
             onToggleKeepAwake?()
+            return
+        }
+        if let session = session(at: local) {
+            onFocusSession?(session)
             return
         }
         if notchRect.contains(local),
@@ -537,12 +639,15 @@ final class NotchWindowController {
         case .onHover:
             panel?.orderFrontRegardless()
             model.isAlwaysOn = false
-            model.isPinned = false
+            // The first time through, the pin is whatever it was when the app
+            // last quit: a notch someone had held open comes back held open.
+            // After that, changing the setting releases it as before.
+            model.isPinned = hasAppliedVisibility ? false : rememberedPin
             // Fold now rather than waiting for the pointer to leave: it may
             // already be somewhere else, in which case nothing would arrive to
             // close it and "on hover" would look exactly like "always show".
             withAnimation(NotchMotion.unfold) {
-                model.isExpanded = false
+                model.isExpanded = model.isPinned
                 model.hoveredIndex = nil
             }
         case .hidden:
@@ -554,6 +659,7 @@ final class NotchWindowController {
             // still takes the screen edge would keep swallowing the pointer.
             panel?.orderOut(nil)
         }
+        hasAppliedVisibility = true
         setPointing(false)
         updateInteractiveRects()
     }
@@ -571,6 +677,7 @@ final class NotchWindowController {
             foldWork = nil
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
         }
+        onPinChanged?(model.isPinned)
         updateInteractiveRects()
     }
 

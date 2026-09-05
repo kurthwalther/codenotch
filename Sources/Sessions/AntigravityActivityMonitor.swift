@@ -92,7 +92,8 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             detail: "Working",
             state: .busy,
             waitingFor: nil,
-            since: modified
+            since: modified,
+            locator: SessionLocator(appBundleID: "com.google.antigravity")
         )
     }
 }

@@ -147,9 +147,9 @@ enum NotchLayout {
     // A second window in the same cell: a miniature bar *above* the ring, so
     // the number under the ring stays the ring's and the bar reads as the
     // lesser gauge.
-    static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
-    static var secondaryBarHeight: CGFloat { Design.npx(7) }
-    static var secondaryBarGap: CGFloat { Design.npx(12) }
+    static var secondaryBarWidth: CGFloat { ringDiameter * 0.45 }
+    static var secondaryBarHeight: CGFloat { Design.npx(11) }
+    static var secondaryBarGap: CGFloat { Design.npx(22) }
     /// Whether every cell reserves room for that bar — true while any provider
     /// has a second window, so the stack stays uniform: cells with and without
     /// one keep the same pitch, and the hover bands keep lining up with the
@@ -333,6 +333,39 @@ enum NotchLayout {
         return height
     }
 
+
+    /// Where each listed session's row sits, measured down from the card's
+    /// top — the same sum `cardHeight` makes, stopped at each row. The window
+    /// controller uses these to tell which session a click landed on, so they
+    /// have to agree with what `TooltipCard` draws to the point.
+    static func sessionRowRanges(windowCount: Int, sessionCount: Int,
+                                 sessionCap: Int = defaultSessionCap,
+                                 statusMessage: String? = nil,
+                                 blockMessage: String? = nil) -> [ClosedRange<CGFloat>] {
+        let shown = min(sessionCount, max(0, sessionCap))
+        guard shown > 0 else { return [] }
+
+        var top = cardPadding + max(glyphSize, cardTitleLineHeight)
+        if let blockMessage {
+            top += headerToBlock + bodyTextHeight(blockMessage)
+        }
+        if windowCount > 0 {
+            let block = 2 * cardBodyLineHeight + labelToBar + barHeight + barToUsed
+            top += headerToBlock
+                + CGFloat(windowCount) * block
+                + CGFloat(windowCount - 1) * blockSpacing
+        } else {
+            top += headerToBlock + bodyTextHeight(statusMessage ?? "")
+        }
+        // The rule above the list.
+        top += blockSpacing + hairline
+
+        let row = 2 * cardBodyLineHeight + sessionRowGap
+        return (0..<shown).map { index in
+            let start = top + blockSpacing + CGFloat(index) * (row + blockSpacing)
+            return start...(start + row)
+        }
+    }
 
     /// Room at each end of the stack: enough for the settings orb to hang past
     /// the foot of the shape, and enough for a tooltip anchored to the first or

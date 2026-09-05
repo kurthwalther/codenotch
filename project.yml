@@ -88,9 +88,14 @@ targets:
         SUEnableAutomaticChecks: false
         SUAutomaticallyUpdate: false
         SUScheduledCheckInterval: 86400
+        # Clicking a session's row selects its terminal tab, which is an
+        # Apple event to Terminal or iTerm2; this is the sentence macOS shows
+        # when it asks.
+        NSAppleEventsUsageDescription: Codenotch selects the terminal tab a session is running in when you click it.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.vinz.codenotch
+        CODE_SIGN_ENTITLEMENTS: Sources/Codenotch.entitlements
         GENERATE_INFOPLIST_FILE: "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 

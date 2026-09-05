@@ -44,7 +44,9 @@ struct ClaudeSessionRecord {
             detail: "\(Self.surface(json["entrypoint"] as? String)) · \(folder)",
             state: state,
             waitingFor: (json["waitingFor"] as? String) ?? (json["needs"] as? String),
-            since: millis.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date()
+            since: millis.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(),
+            locator: SessionLocator(pid: pid, cwd: cwd,
+                                    entrypoint: json["entrypoint"] as? String)
         )
     }
 

@@ -65,24 +65,45 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         // in different places: the CLI and the VS Code extension append to a
         // rollout, and the desktop app writes to its own catalogue. Whichever
         // moved last is the one that is working.
-        var candidates: [(id: String, name: String, at: Date)] = []
+        var candidates: [(id: String, name: String, at: Date, locator: SessionLocator?)] = []
 
         if let rollout = CodexStore.newestRollout(in: stateStore),
            let modified = (try? FileManager.default
                .attributesOfItem(atPath: rollout.path))?[.modificationDate] as? Date {
+            // The CLI leaves no process behind to find; the folder it was
+            // working in is the most the rollout can say.
+            let cwd = rolloutWorkingDirectory(rollout)
             candidates.append((id: "codex.\(rollout.lastPathComponent)",
-                               name: "Codex", at: modified))
+                               name: "Codex", at: modified,
+                               locator: cwd.map { SessionLocator(cwd: $0) }))
         }
         if let desktop = CodexStore.newestDesktopThread(in: desktopStore) {
             candidates.append((id: "codex.desktop", name: desktop.title,
-                               at: desktop.updatedAt))
+                               at: desktop.updatedAt,
+                               locator: SessionLocator(appBundleID: "com.openai.codex")))
         }
 
         guard let newest = candidates.max(by: { $0.at < $1.at }),
-              let session = session(id: newest.id, name: newest.name,
+              var session = session(id: newest.id, name: newest.name,
                                     modified: newest.at, staleAfter: staleAfter, now: now)
         else { return [] }
+        session.locator = newest.locator
         return [session]
+    }
+
+    /// The `cwd` a rollout opens with, from its first line. Read leniently:
+    /// the file is another program's, and a shape we do not recognise costs
+    /// nothing but the click.
+    static func rolloutWorkingDirectory(_ rollout: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: rollout) else { return nil }
+        defer { try? handle.close() }
+        guard let head = try? handle.read(upToCount: 8192),
+              let text = String(data: head, encoding: .utf8),
+              let line = text.split(separator: "\n", maxSplits: 1).first,
+              let json = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+        else { return nil }
+        let payload = json["payload"] as? [String: Any]
+        return (payload?["cwd"] as? String) ?? (json["cwd"] as? String)
     }
 
     /// Only work recorded within the window counts. Anything older is a

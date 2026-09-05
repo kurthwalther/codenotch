@@ -70,6 +70,17 @@ final class Preferences: ObservableObject {
     static let notchScaleRange: ClosedRange<Double> = 0.6...1.0
     static let defaultNotchScale = 0.8
 
+    /// Get out of the way while an app has the whole screen.
+    @Published var hideInFullscreen: Bool {
+        didSet { defaults.set(hideInFullscreen, forKey: Keys.hideInFullscreen) }
+    }
+
+    /// Whether the notch was held open by a click when the app last quit, so
+    /// it can come back that way. Only meaningful under "Show on hover".
+    @Published var notchPinned: Bool {
+        didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
+    }
+
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != Self.isRegisteredForLogin else { return }
@@ -95,6 +106,8 @@ final class Preferences: ObservableObject {
         static let ringWindows = "ringWindows"
         static let secondaryWindows = "secondaryWindows"
         static let notchScale = "notchScale"
+        static let hideInFullscreen = "hideInFullscreen"
+        static let notchPinned = "notchPinned"
     }
 
     /// True the very first time this copy runs, and never again.
@@ -164,6 +177,10 @@ final class Preferences: ObservableObject {
         // than reading. Absent means never chosen.
         let scale = defaults.object(forKey: Keys.notchScale) as? Double ?? Self.defaultNotchScale
         self.notchScale = min(max(scale, Self.notchScaleRange.lowerBound), Self.notchScaleRange.upperBound)
+        // On by default: a film or a slide deck is the one time nobody wants
+        // a reading on the screen's edge. Absent means never chosen.
+        self.hideInFullscreen = defaults.object(forKey: Keys.hideInFullscreen) as? Bool ?? true
+        self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin

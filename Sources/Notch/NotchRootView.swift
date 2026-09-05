@@ -64,7 +64,8 @@ struct NotchRootView: View {
                         activity: model.activity(for: snapshot.id),
                         now: model.now,
                         direction: model.edge.tooltipDirection,
-                        sessionCap: model.sessionCap
+                        sessionCap: model.sessionCap,
+                        hoveredSessionID: model.hoveredSessionID
                     )
                         // Deliberately *no* `.id` here: the card is one object
                         // that travels and resizes between cells, which reads
