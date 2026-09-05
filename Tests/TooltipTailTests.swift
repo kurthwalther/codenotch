@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The tail is written once, pointing right, and turned onto the other three
 /// directions. These pin the turn — the tip lands on the side the direction
-/// names and the base sits flush against the card opposite — and the curve
-/// itself, which has to leave the card tangentially rather than at an angle.
+/// names and the base sits flush against the card opposite — and the profile
+/// itself: a bubble's tail, full at the card and sweeping in to a point.
 @MainActor
 final class TooltipTailTests: XCTestCase {
     private func rect(_ direction: NotchEdge.TooltipDirection) -> CGRect {
@@ -26,17 +26,33 @@ final class TooltipTailTests: XCTestCase {
         XCTAssertTrue(contains(.up, CGPoint(x: stacked.midX, y: stacked.maxY - inset)))
     }
 
-    func testTheEdgesLeaveTheCardTangentially() {
+    /// Where a straight edge from base corner to tip would run at a given
+    /// distance along the tail — the triangle this replaced.
+    private func straightEdge(at fraction: CGFloat, in r: CGRect) -> (upper: CGFloat, lower: CGFloat) {
+        let inset = r.midY * fraction
+        return (r.minY + inset, r.maxY - inset)
+    }
+
+    func testTheProfileIsABellyThenAHook() {
         let r = rect(.leading)
-        // Just inside the base, near both corners: the fillet hugs the card at
-        // first, so the tail is still nearly full-height there.
-        XCTAssertTrue(contains(.leading, CGPoint(x: 0.5, y: 2)))
-        XCTAssertTrue(contains(.leading, CGPoint(x: 0.5, y: r.maxY - 2)))
-        // A quarter of the way out, the edge has bowed in past where a
-        // straight one would run: these points sit inside the triangle this
-        // replaced, and outside the curve.
-        XCTAssertFalse(contains(.leading, CGPoint(x: r.maxX * 0.25, y: r.maxY * 0.15)))
-        XCTAssertFalse(contains(.leading, CGPoint(x: r.maxX * 0.25, y: r.maxY * 0.85)))
+        // Just inside the base, near both corners: the belly leaves the card
+        // level, so the tail is still full-height there.
+        XCTAssertTrue(contains(.leading, CGPoint(x: 0.5, y: 1)))
+        XCTAssertTrue(contains(.leading, CGPoint(x: 0.5, y: r.maxY - 1)))
+
+        // Well along, the belly bows *out* past where the straight edge would
+        // run: a point just inside that line is inside the curve too.
+        let belly = straightEdge(at: 0.4, in: r)
+        XCTAssertTrue(contains(.leading, CGPoint(x: r.maxX * 0.4, y: belly.upper - 1)))
+        XCTAssertTrue(contains(.leading, CGPoint(x: r.maxX * 0.4, y: belly.lower + 1)))
+
+        // Toward the point, the hook sweeps *in* past it: a point just inside
+        // the straight line is outside the curve. Measured where the sweep is
+        // deepest — it is a subtle curve, about a point deep at this size,
+        // which is what keeps the tail a bubble's rather than a thorn.
+        let hook = straightEdge(at: 0.75, in: r)
+        XCTAssertFalse(contains(.leading, CGPoint(x: r.maxX * 0.75, y: hook.upper + 0.5)))
+        XCTAssertFalse(contains(.leading, CGPoint(x: r.maxX * 0.75, y: hook.lower - 0.5)))
     }
 
     func testTheShapeStaysInsideItsFrame() {
@@ -52,16 +68,22 @@ final class TooltipTailTests: XCTestCase {
     /// each way, black on light, so the silhouette is what you see.
     func testRendersEveryDirection() throws {
         let now = Date()
-        let snapshot = ProviderSnapshot(
+        var snapshot = ProviderSnapshot(
             id: "claude", displayName: "Claude", glyph: .claude,
             fidelity: .official, status: .ok,
             windows: [
                 LimitWindow(id: "session", label: "Current session", usedFraction: 0.23,
                             resetsAt: now.addingTimeInterval(3 * 3600)),
                 LimitWindow(id: "all", label: "All models", usedFraction: 0.80,
+                            resetsAt: now.addingTimeInterval(30 * 3600)),
+                LimitWindow(id: "weekly_scoped", label: "Fable", usedFraction: 0.42,
                             resetsAt: now.addingTimeInterval(30 * 3600))
-            ]
+            ],
+            headlineID: "weekly_scoped"
         )
+        // A pace on two of them, so the card shows both things it can say.
+        snapshot.pace["session"] = UsagePace(perSecond: 0.10 / (30 * 60))
+        snapshot.pace["all"] = UsagePace(perSecond: 0.01 / (30 * 60))
         let view = HStack(alignment: .center, spacing: 40) {
             TooltipCard(snapshot: snapshot, now: now, direction: .leading)
             TooltipCard(snapshot: snapshot, now: now, direction: .trailing)

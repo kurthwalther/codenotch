@@ -2,12 +2,13 @@ import SwiftUI
 
 /// The speech-bubble tail, its point aimed at the hovered cell.
 ///
-/// Not a triangle. The notch meets the bezel with inverse-rounded flares, and
-/// a tail with two straight edges and a sharp point read as a different object
-/// bolted onto the card. This one leaves the card's edge *tangentially* — the
-/// same fillet the notch's flares make — and its two edges sweep in to a small
-/// rounded tip, so card and tail read as one silhouette pinched out toward the
-/// ring rather than a card with an arrow stuck on it.
+/// Not a triangle, and not a thorn either. A message bubble's tail has a
+/// particular profile: it leaves the bubble with a rounded belly and then
+/// turns the other way, sweeping concavely in to a fine point. Two straight
+/// edges read as an arrow stuck on the card; a concave fillet into a rounded
+/// tip, which this replaced, read as a drip. This one is the bubble's tail,
+/// mirrored top and bottom so it can sit in the middle of an edge rather than
+/// at a corner: each side is one S-curve, convex first and concave last.
 ///
 /// Written once, for a tail pointing right, and turned onto the other three
 /// directions — the same arrangement `SideNotchShape` uses.
@@ -16,17 +17,17 @@ struct TooltipTail: Shape {
     /// other way, at the cell.
     let direction: NotchEdge.TooltipDirection
 
-    /// Rounding at the point. Enough to be soft, not so much that it stops
-    /// pointing.
-    static let tipRadius = Design.px(12)
-    /// How far each edge keeps hugging the card before it turns toward the
-    /// tip, as a share of the distance it has to cover. Higher is a longer,
-    /// thinner neck — at 0.4 the tail was a thorn; lower is closer to the
-    /// straight triangle this replaced. This is a full tail whose sides
-    /// visibly bow in and whose base melts into the card.
-    static let flare: CGFloat = 0.25
-    /// Cubic control distance that best approximates a quarter circle.
-    private static let kappa: CGFloat = 0.5523
+    /// How far along the tail the belly's control point sits, as a share of
+    /// the length. It sets how full the tail is near the card: higher is a
+    /// rounder belly.
+    static let belly: CGFloat = 0.45
+    /// How far back from the tip the hook's control point sits, as a share of
+    /// the length. Longer is a longer, more gradual sweep into the point.
+    static let hook: CGFloat = 0.5
+    /// The slope each edge arrives at the point with, across per along. Both
+    /// edges arrive this steeply, so the point's angle is twice this: small
+    /// enough to be a point, not so small that it is a needle.
+    static let pointSlope: CGFloat = 0.25
 
     func path(in rect: CGRect) -> Path {
         // Canonical: `u` along the tail from the card (0) to the tip, `v`
@@ -65,36 +66,25 @@ struct TooltipTail: Shape {
     /// The tail pointing right: base along `u == 0`, tip at `(length, breadth/2)`.
     static func canonicalPath(length: CGFloat, breadth: CGFloat) -> Path {
         let h = breadth / 2
-        let r = min(tipRadius, h, length / 2)
-        // Where the two edges hand over to the tip's cap.
-        let neck = length - r
-        let k = kappa * r
+        let tip = CGPoint(x: length, y: h)
+        // The belly's control point holds the edge level as it leaves the card,
+        // so it bows out before it turns; the hook's sits back from the point
+        // on the line the edge arrives along, so it sweeps in concavely and
+        // meets its mirror at a clean angle. One cubic, one inflection.
+        let bellyOut = belly * length
+        let hookBack = hook * length
 
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
-        // Upper edge: leaves the card heading straight along it, arrives at the
-        // cap heading for the tip, and sweeps concavely between the two.
         path.addCurve(
-            to: CGPoint(x: neck, y: h - r),
-            control1: CGPoint(x: 0, y: flare * (h - r)),
-            control2: CGPoint(x: neck * (1 - flare), y: h - r)
+            to: tip,
+            control1: CGPoint(x: bellyOut, y: 0),
+            control2: CGPoint(x: length - hookBack, y: h - pointSlope * hookBack)
         )
-        // The cap: two quarter circles around the tip's centre.
-        path.addCurve(
-            to: CGPoint(x: length, y: h),
-            control1: CGPoint(x: neck + k, y: h - r),
-            control2: CGPoint(x: length, y: h - k)
-        )
-        path.addCurve(
-            to: CGPoint(x: neck, y: h + r),
-            control1: CGPoint(x: length, y: h + k),
-            control2: CGPoint(x: neck + k, y: h + r)
-        )
-        // Lower edge, the mirror of the upper one.
         path.addCurve(
             to: CGPoint(x: 0, y: breadth),
-            control1: CGPoint(x: neck * (1 - flare), y: h + r),
-            control2: CGPoint(x: 0, y: breadth - flare * (h - r))
+            control1: CGPoint(x: length - hookBack, y: h + pointSlope * hookBack),
+            control2: CGPoint(x: bellyOut, y: breadth)
         )
         path.closeSubpath()
         return path
