@@ -211,14 +211,16 @@ struct ProviderCell: View {
         VStack(spacing: 0) {
             if reservesBar {
                 VStack(spacing: NotchLayout.secondaryBarLabelGap) {
-                    secondaryBar
-                        .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
-                    // Its own number, a whisper beside the ring's figure.
+                    // Its own number above it, smaller than the ring's and a
+                    // shade quieter; its name below.
                     Text(secondary.map { "\(Int(($0.remaining * 100).rounded()))%" } ?? " ")
                         .font(Typography.barPercent)
-                        .foregroundStyle(Palette.textSecondary)
+                        .foregroundStyle(Palette.textMid)
                         .fixedSize()
                         .frame(height: NotchLayout.secondaryBarLabelHeight)
+                    secondaryBar
+                        .frame(width: NotchLayout.secondaryBarWidth, height: NotchLayout.secondaryBarHeight)
+                    caption(snapshot.secondary?.shortLabel ?? " ")
                 }
                 .padding(.bottom, NotchLayout.secondaryBarGap)
             }
@@ -244,8 +246,43 @@ struct ProviderCell: View {
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: percentText)
                 .padding(.top, NotchLayout.ringLabelGap)
+            // Which window the number is, and when it comes back: two lines
+            // small enough to be found rather than read first.
+            caption(snapshot.headline?.shortLabel ?? " ")
+                .padding(.top, NotchLayout.captionGap)
+            resetCaption
+                .padding(.top, NotchLayout.captionGap)
         }
         .frame(height: NotchLayout.cellExtent)
+    }
+
+    private func caption(_ text: String) -> some View {
+        Text(text)
+            .font(Typography.caption)
+            .foregroundStyle(Palette.textSecondary)
+            .lineLimit(1)
+            .fixedSize()
+            .frame(height: NotchLayout.captionLineHeight)
+    }
+
+    /// A tiny arrow and the reset time — or nothing, for a provider that
+    /// never says.
+    @ViewBuilder
+    private var resetCaption: some View {
+        if snapshot.hasReading, let resetsAt = snapshot.headline?.resetsAt {
+            HStack(spacing: Design.npx(3)) {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: Design.notchFontSize(capPixels: 9), weight: .semibold))
+                Text(ResetCopy.short(for: resetsAt, now: now))
+                    .font(Typography.caption)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Palette.textSecondary)
+            .fixedSize()
+            .frame(height: NotchLayout.captionLineHeight)
+        } else {
+            caption(" ")
+        }
     }
 
     /// Filled when this cell has a second window, an empty slot otherwise —

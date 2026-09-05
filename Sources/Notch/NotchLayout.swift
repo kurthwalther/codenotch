@@ -149,11 +149,19 @@ enum NotchLayout {
     // lesser gauge.
     static var secondaryBarWidth: CGFloat { ringDiameter * 0.6 }
     static var secondaryBarHeight: CGFloat { Design.npx(11) }
-    /// The bar's own number, under it, and the gap between the two.
-    static var secondaryBarLabelGap: CGFloat { Design.npx(6) }
+    /// The bar's own number, above it; its name, below; and the gaps.
+    static var secondaryBarLabelGap: CGFloat { Design.npx(5) }
     static var secondaryBarLabelHeight: CGFloat {
-        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 12), weight: .medium))
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 15), weight: .semibold))
     }
+    /// The captions under the ring's number: which window, and when it
+    /// resets. Every cell carries both lines, blank where a provider has
+    /// nothing to say, so the stack keeps one pitch.
+    static var captionGap: CGFloat { Design.npx(3) }
+    static var captionLineHeight: CGFloat {
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
+    }
+    static var captionSpace: CGFloat { 2 * (captionGap + captionLineHeight) }
     /// The gap the percent *appears* to keep below the ring: its line box
     /// carries blank space above the capitals, so the bar — a solid shape with
     /// none — needs that much more to look evenly spaced.
@@ -167,7 +175,8 @@ enum NotchLayout {
     nonisolated(unsafe) static var reservesSecondaryBar = false
     static var secondaryBarSpace: CGFloat {
         reservesSecondaryBar
-            ? secondaryBarHeight + secondaryBarLabelGap + secondaryBarLabelHeight + secondaryBarGap
+            ? secondaryBarLabelHeight + secondaryBarLabelGap + secondaryBarHeight
+                + secondaryBarLabelGap + captionLineHeight + secondaryBarGap
             : 0
     }
     /// The gap between the caption and the keep-awake handle, and inside it.
@@ -215,10 +224,10 @@ enum NotchLayout {
         ceil(font.ascender - font.descender + font.leading)
     }
 
-    /// Ring plus its percent label — and the bar above the ring, when every
-    /// cell is holding room for one.
+    /// Ring plus its percent label and the two captions under it — and the
+    /// bar above the ring, when every cell is holding room for one.
     static var cellExtent: CGFloat {
-        secondaryBarSpace + ringDiameter + ringLabelGap + percentLineHeight
+        secondaryBarSpace + ringDiameter + ringLabelGap + percentLineHeight + captionSpace
     }
 
     /// What one cell claims along the stack.
@@ -345,6 +354,12 @@ enum NotchLayout {
         return height
     }
 
+
+    /// The optional shadow: soft and low, the way a panel floating a little
+    /// off the screen casts one.
+    static var shadowRadius: CGFloat { Design.npx(30) }
+    static var shadowDrop: CGFloat { Design.npx(10) }
+    static let shadowOpacity: Double = 0.55
 
     /// The strip at the end of a session's row that opens its conversation
     /// rather than going to the session.

@@ -659,10 +659,12 @@ final class CellPitchTests: XCTestCase {
         }
     }
 
-    /// The side edges keep the rhythm the design frame fixes, to the point.
+    /// The side edges keep the rhythm the design frame fixes, to the point —
+    /// once this fork's two caption lines, which the frame never had, are
+    /// taken off.
     func testTheSideEdgesKeepTheFramesPitch() {
         XCTAssertEqual(
-            NotchLayout.cellPitch(for: .right) / NotchLayout.ringDiameter,
+            (NotchLayout.cellPitch(for: .right) - NotchLayout.captionSpace) / NotchLayout.ringDiameter,
             275.0 / 117.0, accuracy: 0.05
         )
     }

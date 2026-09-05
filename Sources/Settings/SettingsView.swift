@@ -64,6 +64,13 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Toggle("Shadow", isOn: $preferences.notchShadow)
+                Text("A soft shadow under the notch and its cards, the way a panel "
+                     + "floating a little off the screen casts one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 if preferences.notchVisibility == .auto {
                     Picker("Auto shows while", selection: $preferences.autoScope) {
                         ForEach(NotchVisibility.AutoScope.allCases) { Text($0.title).tag($0) }

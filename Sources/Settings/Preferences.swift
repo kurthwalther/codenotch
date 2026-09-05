@@ -95,6 +95,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
     }
 
+    /// A soft shadow under the notch and its cards.
+    @Published var notchShadow: Bool {
+        didSet { defaults.set(notchShadow, forKey: Keys.shadow) }
+    }
+
     /// What Auto counts: any session, or an agent at work.
     @Published var autoScope: NotchVisibility.AutoScope {
         didSet { defaults.set(autoScope.rawValue, forKey: Keys.autoScope) }
@@ -158,6 +163,7 @@ final class Preferences: ObservableObject {
         static let notices = "noticesEnabled"
         static let restAfter = "restAfterSeconds"
         static let autoScope = "autoScope"
+        static let shadow = "notchShadow"
         static let noticeSeconds = "noticeSeconds"
     }
 
@@ -241,6 +247,7 @@ final class Preferences: ObservableObject {
         self.hideInFullscreen = defaults.object(forKey: Keys.hideInFullscreen) as? Bool ?? true
         self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
         self.noticesEnabled = defaults.object(forKey: Keys.notices) as? Bool ?? true
+        self.notchShadow = defaults.bool(forKey: Keys.shadow)
         self.autoScope = defaults.string(forKey: Keys.autoScope)
             .flatMap(NotchVisibility.AutoScope.init(rawValue:)) ?? .session
         let rest = defaults.object(forKey: Keys.restAfter) as? Double ?? 10

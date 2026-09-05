@@ -215,3 +215,27 @@ final class NotchOrderTests: XCTestCase {
         XCTAssertTrue(dispatch.cancelled)
     }
 }
+
+/// The captions under the numbers.
+final class CaptionTests: XCTestCase {
+    func testShortNamesForTheCaptions() {
+        XCTAssertEqual(LimitWindow(id: "s", label: "Current session", usedFraction: 0.1).shortLabel, "Session")
+        XCTAssertEqual(LimitWindow(id: "a", label: "All models", usedFraction: 0.1).shortLabel, "All")
+        XCTAssertEqual(LimitWindow(id: "f", label: "Fable", usedFraction: 0.1).shortLabel, "Fable")
+        XCTAssertEqual(LimitWindow(id: "i", label: "Included usage", usedFraction: 0.1).shortLabel, "Included")
+    }
+
+    func testTheShortResetDropsTheWord() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(51 * 60), now: now), "in 51 min")
+        XCTAssertFalse(ResetCopy.short(for: now.addingTimeInterval(6 * 3600), now: now).hasPrefix("Resets"))
+        XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(-5), now: now), "now")
+    }
+
+    func testEveryCellCarriesTheTwoCaptionLines() {
+        XCTAssertEqual(NotchLayout.captionSpace, 2 * (NotchLayout.captionGap + NotchLayout.captionLineHeight), accuracy: 0.001)
+        XCTAssertEqual(NotchLayout.cellExtent,
+                       NotchLayout.secondaryBarSpace + NotchLayout.ringDiameter + NotchLayout.ringLabelGap
+                           + NotchLayout.percentLineHeight + NotchLayout.captionSpace, accuracy: 0.001)
+    }
+}

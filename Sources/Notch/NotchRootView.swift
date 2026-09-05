@@ -76,6 +76,8 @@ struct NotchRootView: View {
                         sessionCap: model.sessionCap,
                         hoveredSessionID: model.hoveredSessionID
                     )
+                        .shadow(color: .black.opacity(model.showsShadow ? NotchLayout.shadowOpacity : 0),
+                                radius: NotchLayout.shadowRadius, x: 0, y: NotchLayout.shadowDrop)
                         // Deliberately *no* `.id` here: the card is one object
                         // that travels and resizes between cells, which reads
                         // far better than one card leaving and another arriving.
@@ -152,6 +154,8 @@ struct NotchRootView: View {
             // slide out of the end of it; clipped, they are swallowed by the
             // outline as it closes, which is what a notch should do.
             .clipShape(SideNotchShape(edge: model.edge, joining: model.joinedNotch))
+            .shadow(color: .black.opacity(model.showsShadow ? NotchLayout.shadowOpacity : 0),
+                    radius: NotchLayout.shadowRadius, x: 0, y: NotchLayout.shadowDrop)
             .position(place.point(
                 along: model.notchLeadingInset + model.notchLength / 2,
                 across: model.notchDepth / 2

@@ -14,10 +14,17 @@ enum Typography {
         Font.system(size: Design.notchFontSize(capPixels: 16), weight: .medium)
     }
 
-    /// The second window's own number, beside its bar: a whisper next to the
-    /// ring's figure. Cap height 12px.
+    /// The second window's own number, above its bar: a whisper next to the
+    /// ring's figure. Cap height 15px.
     static var barPercent: Font {
-        Font.system(size: Design.notchFontSize(capPixels: 12), weight: .medium)
+        Font.system(size: Design.notchFontSize(capPixels: 15), weight: .semibold)
+    }
+
+    /// The captions under the numbers — which window, and when it resets.
+    /// Cap height 11px: small on purpose, there to be found rather than read
+    /// first.
+    static var caption: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 11), weight: .medium)
     }
 
     /// The quieter line under it.

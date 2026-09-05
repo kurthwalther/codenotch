@@ -15,7 +15,10 @@ final class NotchLayoutTests: XCTestCase {
         // Cell centre to cell centre is 275px in the frame. Looser, because
         // the pitch includes a real font's line box rather than a measured
         // cap height, and SF's metrics are not the frame's to the pixel.
-        XCTAssertEqual(NotchLayout.cellPitch(for: .right) / NotchLayout.ringDiameter, 275.0 / 117.0, accuracy: 0.05)
+        // The two caption lines under the number are this fork's addition
+        // and sit outside the frame's rhythm, so they are taken off first.
+        XCTAssertEqual((NotchLayout.cellPitch(for: .right) - NotchLayout.captionSpace) / NotchLayout.ringDiameter,
+                       275.0 / 117.0, accuracy: 0.05)
         // The card is 600px wide.
         XCTAssertEqual(NotchLayout.cardWidth / NotchLayout.ringDiameter, 600.0 / 117.0, accuracy: 0.001)
     }
@@ -787,6 +790,12 @@ final class SessionCapTests: XCTestCase {
     /// Even the shortest display Macs ship with lists at least what the fixed
     /// cap used to, so solving for the screen never costs anyone a row.
     @MainActor func testTheSmallestLaptopIsNoWorseOffThanTheFixedCap() {
+        // Measured at the size the notch is actually drawn at: this fork
+        // draws it at 80% of the frame by default, and adds two caption
+        // lines to every cell, which at the frame's full size would leave a
+        // 13-inch screen a row short.
+        Design.notchFactor = Preferences.defaultNotchScale
+        defer { Design.notchFactor = 1 }
         let model = NotchViewModel()
         model.edge = .right
         model.screenSize = CGSize(width: 1470, height: 956)   // 13-inch Air

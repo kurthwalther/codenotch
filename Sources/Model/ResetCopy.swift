@@ -38,6 +38,13 @@ enum ResetCopy {
         return "Resets \(formatter.string(from: resetsAt))"
     }
 
+    /// The same, at caption size: the word "Resets" is the icon's job there.
+    static func short(for resetsAt: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let full = text(for: resetsAt, now: now, calendar: calendar)
+        if full == "Resetting…" { return "now" }
+        return full.hasPrefix("Resets ") ? String(full.dropFirst("Resets ".count)) : full
+    }
+
     /// Whole days between two instants, counted by calendar day rather than by
     /// dividing seconds — so a clock change cannot shift the answer.
     static func daysApart(from: Date, to: Date, calendar: Calendar = .current) -> Int {

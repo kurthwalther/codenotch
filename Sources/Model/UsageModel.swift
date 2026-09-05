@@ -59,6 +59,18 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         usedFraction.map { max(0, 1 - $0) }
     }
 
+    /// The label at the size of a caption under a ring: one word where the
+    /// vendor's is two. "Current session" is the session; "All models" is
+    /// all; anything else keeps its first word.
+    var shortLabel: String {
+        switch label {
+        case "Current session": return "Session"
+        case "All models":      return "All"
+        default:
+            return label.split(separator: " ").first.map(String.init) ?? label
+        }
+    }
+
     /// What the tooltip says on the line under the bar.
     var summary: String {
         if let usedFraction {

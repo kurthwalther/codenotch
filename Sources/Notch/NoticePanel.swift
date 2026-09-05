@@ -47,6 +47,12 @@ struct NoticeRootView: View {
     @ObservedObject var center: SessionNoticeCenter
 
     var body: some View {
+        content
+            .shadow(color: .black.opacity(controller.showsShadow ? NotchLayout.shadowOpacity : 0),
+                    radius: NotchLayout.shadowRadius, x: 0, y: NotchLayout.shadowDrop)
+    }
+
+    private var content: some View {
         Group {
             if let conversation = controller.conversation {
                 ConversationView(
@@ -56,7 +62,7 @@ struct NoticeRootView: View {
                     send: { controller.send() },
                     cancel: { controller.cancelSend() }
                 )
-                .padding(Design.px(16))
+                .padding(NoticeWindowController.margin)
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else {
                 NoticeStackView(center: center, edge: controller.edge,
@@ -156,7 +162,7 @@ struct NoticeStackView: View {
                     )
             }
         }
-        .padding(Design.px(16))
+        .padding(NoticeWindowController.margin)
         .animation(.spring(response: 0.38, dampingFraction: 0.82), value: center.notices)
     }
 
@@ -176,6 +182,8 @@ struct NoticeStackView: View {
 @MainActor
 final class NoticeWindowController: ObservableObject {
     static let width = Design.px(560)
+    /// Clear space around the cards inside the panel: room for a shadow.
+    static var margin: CGFloat { Design.px(16) + NotchLayout.shadowRadius }
 
     let center: SessionNoticeCenter
     /// How long a notice stays, unless the pointer is on the card.
@@ -188,6 +196,9 @@ final class NoticeWindowController: ObservableObject {
 
     /// The conversation on show, if one is.
     @Published private(set) var conversation: Conversation?
+    /// A soft shadow under the cards, from Settings. The panel keeps a
+    /// margin for it either way, so switching it on moves nothing.
+    @Published var showsShadow = false
 
     /// The pointer is on the cards, or a conversation is open and being
     /// typed into — attention the notch should count as its own, so it does
@@ -314,7 +325,9 @@ final class NoticeWindowController: ObservableObject {
         // Sized to what the content wants, placed beside the notch, centred
         // along the bezel where the notch is.
         let size = hosting?.fittingSize ?? .zero
-        var frame = Self.frame(size: size, edge: where_.edge, inset: where_.inset,
+        // The margin is transparent, so the cards sit as far from the notch
+        // as they did before there was one.
+        var frame = Self.frame(size: size, edge: where_.edge, inset: where_.inset - Self.margin + Design.px(16),
                                screen: screen.frame, usable: screen.visibleFrame)
         if let topLeft = draggedTopLeft {
             // Grown or shrunk in place, hanging from where it was left.

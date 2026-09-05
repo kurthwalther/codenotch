@@ -16,6 +16,8 @@ enum Palette {
 
     static let textPrimary   = Color.white
     static let textSecondary = Color(hex: 0x808080)
+    /// Between the two: for a number that is secondary but still a number.
+    static let textMid       = Color(hex: 0xA6A6A6)
 
     /// The keep-awake cup while it is on: coffee with milk, not a status
     /// green — the cup is a switch, not a reading, and green already means

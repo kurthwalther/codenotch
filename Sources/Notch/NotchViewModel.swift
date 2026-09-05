@@ -101,6 +101,9 @@ final class NotchViewModel: ObservableObject {
     /// Where the colours change, from Settings.
     @Published var thresholds = UsageThresholds.standard
 
+    /// A soft shadow under the notch and its card, from Settings.
+    @Published var showsShadow = false
+
     /// How much smaller the notch draws at rest, about the point where it
     /// meets the bezel, so it stays flush.
     static let restingScale: CGFloat = 0.8
