@@ -465,6 +465,9 @@ private struct SessionRow: View {
     /// The pointer is on it, and a click would take you to the session.
     var isHovered: Bool = false
 
+    /// Sessions whose words can be read have a way into the conversation.
+    private var hasConversation: Bool { session.locator?.transcriptID != nil }
+
     private var stateColor: Color {
         switch session.state {
         case .busy:    return Palette.ample
@@ -490,17 +493,28 @@ private struct SessionRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SplitRow(leading: session.name, trailing: stateWord,
-                     trailingColor: stateColor) {
-                StatusRing(state: session.state, color: stateColor)
+        HStack(alignment: .center, spacing: NotchLayout.statusDotGap) {
+            VStack(alignment: .leading, spacing: 0) {
+                SplitRow(leading: session.name, trailing: stateWord,
+                         trailingColor: stateColor) {
+                    StatusRing(state: session.state, color: stateColor)
+                }
+                SplitRow(
+                    leading: detail,
+                    trailing: ElapsedCopy.text(since: session.since, now: now),
+                    leadingColor: Palette.textSecondary
+                )
+                .padding(.top, NotchLayout.sessionRowGap)
             }
-            SplitRow(
-                leading: detail,
-                trailing: ElapsedCopy.text(since: session.since, now: now),
-                leadingColor: Palette.textSecondary
-            )
-            .padding(.top, NotchLayout.sessionRowGap)
+            // The way into the conversation, at the row's end. The window
+            // controller answers a click there differently from one on the
+            // rest of the row — see `NotchLayout.conversationGlyphWidth`.
+            if hasConversation {
+                Image(systemName: "bubble.left.and.text.bubble.right")
+                    .font(.system(size: Design.px(20), weight: .regular))
+                    .foregroundStyle(isHovered ? Palette.textPrimary : Palette.textSecondary)
+                    .frame(width: NotchLayout.conversationGlyphWidth, alignment: .trailing)
+            }
         }
         // A quiet plate behind the row, so it reads as something you can
         // press. Drawn in the background, so nothing in the row moves.

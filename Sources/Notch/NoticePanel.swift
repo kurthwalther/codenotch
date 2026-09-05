@@ -24,14 +24,42 @@ final class NoticePanel: NSPanel {
         acceptsMouseMovedEvents = true
     }
 
-    override var canBecomeKey: Bool { false }
+    /// Key only while there is something to type into: a conversation's
+    /// reply line. Non-activating, so becoming key never brings the app
+    /// forward or takes focus from what was being worked on.
+    var allowsKey = false
+    override var canBecomeKey: Bool { allowsKey }
     override var canBecomeMain: Bool { false }
 }
 
-/// The hosting view, which takes the first click: on a window that is never
+/// The hosting view, which takes the first click: on a window that is not
 /// key, the first click would otherwise only be an attempt to make it so.
 final class NoticeHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// Either the notices or, once one is opened, the conversation behind it.
+struct NoticeRootView: View {
+    @ObservedObject var controller: NoticeWindowController
+    @ObservedObject var center: SessionNoticeCenter
+
+    var body: some View {
+        Group {
+            if let conversation = controller.conversation {
+                ConversationView(
+                    conversation: conversation,
+                    close: { controller.closeConversation() },
+                    open: { SessionFocus.focus(conversation.session) },
+                    send: { controller.send() }
+                )
+                .padding(Design.px(16))
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else {
+                NoticeStackView(center: center, edge: controller.edge) { controller.open($0) }
+            }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.85), value: controller.conversation?.session.id)
+    }
 }
 
 /// One notice as drawn.
@@ -104,41 +132,97 @@ struct NoticeStackView: View {
     }
 }
 
-/// Puts the notices on screen beside the notch and takes them down again.
+/// Puts the notices on screen beside the notch and takes them down again —
+/// and, when one is opened, the conversation behind it, with a line to reply.
 @MainActor
-final class NoticeWindowController {
-    static let width = Design.px(520)
+final class NoticeWindowController: ObservableObject {
+    static let width = Design.px(560)
 
     let center: SessionNoticeCenter
     /// How long a notice stays, unless the pointer is on the card.
     var lifetime: TimeInterval = 12
+    /// And how long an open conversation stays after the pointer has left it.
+    static let conversationLingers: TimeInterval = 60
     /// Where the cards go: the screen and how far in from the bezel, asked
     /// each time because the notch may have opened or folded meanwhile.
     var anchor: () -> (screen: NSScreen?, edge: NotchEdge, inset: CGFloat) = { (NSScreen.main, .right, 0) }
-    /// What a click on a card does.
-    var open: (SessionNotice) -> Void = { _ in }
+
+    /// The conversation on show, if one is.
+    @Published private(set) var conversation: Conversation?
+    private(set) var edge: NotchEdge = .right
 
     private var panel: NoticePanel?
-    private var hosting: NoticeHostingView<NoticeStackView>?
+    private var hosting: NoticeHostingView<NoticeRootView>?
     private var cancellables = Set<AnyCancellable>()
+    private var conversationWatch: AnyCancellable?
     private var tick: Timer?
+    private var pointerLeftAt: Date?
 
     init(center: SessionNoticeCenter) {
         self.center = center
         center.$notices
             .receive(on: RunLoop.main)
-            .sink { [weak self] notices in
-                MainActor.assumeIsolated { self?.present(notices) }
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.present() }
             }
             .store(in: &cancellables)
     }
 
-    private func present(_ notices: [SessionNotice]) {
-        if notices.isEmpty {
+    /// A click on a notice opens its conversation in place of the notices.
+    func open(_ notice: SessionNotice) {
+        center.dismiss(notice.id)
+        show(conversation: Conversation(session: notice.session))
+    }
+
+    /// The conversation for a session, asked for from the notch's card.
+    func show(conversation: Conversation) {
+        self.conversation?.stopFollowing()
+        self.conversation = conversation
+        conversation.startFollowing()
+        // Re-place the panel as turns arrive and the draft grows.
+        conversationWatch = conversation.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.present() } }
+            }
+        pointerLeftAt = nil
+        present()
+        panel?.allowsKey = true
+        panel?.makeKey()
+    }
+
+    func closeConversation() {
+        conversation?.stopFollowing()
+        conversationWatch = nil
+        conversation = nil
+        if let panel {
+            if panel.isKeyWindow { panel.resignKey() }
+            panel.allowsKey = false
+        }
+        present()
+    }
+
+    /// Sends the draft and, when it went, clears it — the transcript will
+    /// show it as a turn a moment later.
+    func send() {
+        guard let conversation else { return }
+        let text = conversation.draft
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        Task { @MainActor in
+            let state = await SessionReply.send(text, to: conversation.session)
+            conversation.sendState = state
+            if case .sent = state { conversation.draft = "" }
+            if case .copied = state { conversation.draft = "" }
+        }
+    }
+
+    private func present() {
+        let showing = conversation != nil || !center.notices.isEmpty
+        if !showing {
             // Let the last card slide out before the panel goes.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
                 MainActor.assumeIsolated {
-                    guard let self, self.center.notices.isEmpty else { return }
+                    guard let self, self.conversation == nil, self.center.notices.isEmpty else { return }
                     self.panel?.orderOut(nil)
                     self.tick?.invalidate()
                     self.tick = nil
@@ -148,12 +232,10 @@ final class NoticeWindowController {
         }
         let where_ = anchor()
         guard let screen = where_.screen else { return }
-        let panel = self.panel ?? makePanel(edge: where_.edge)
-        // Sized to what the stack wants, placed beside the notch, centred
+        edge = where_.edge
+        let panel = self.panel ?? makePanel()
+        // Sized to what the content wants, placed beside the notch, centred
         // along the bezel where the notch is.
-        hosting?.rootView = NoticeStackView(center: center, edge: where_.edge) { [weak self] in
-            self?.open($0)
-        }
         let size = hosting?.fittingSize ?? .zero
         panel.setFrame(Self.frame(size: size, edge: where_.edge, inset: where_.inset,
                                   screen: screen.frame, usable: screen.visibleFrame),
@@ -162,11 +244,9 @@ final class NoticeWindowController {
         startTicking()
     }
 
-    private func makePanel(edge: NotchEdge) -> NoticePanel {
+    private func makePanel() -> NoticePanel {
         let panel = NoticePanel(contentRect: CGRect(x: 0, y: 0, width: Self.width, height: 100))
-        let hosting = NoticeHostingView(
-            rootView: NoticeStackView(center: center, edge: edge) { [weak self] in self?.open($0) }
-        )
+        let hosting = NoticeHostingView(rootView: NoticeRootView(controller: self, center: center))
         panel.contentView = hosting
         self.hosting = hosting
         self.panel = panel
@@ -190,8 +270,9 @@ final class NoticeWindowController {
         }
     }
 
-    /// Half a second at a time: is the pointer on the cards, and has any
-    /// card been up long enough to go.
+    /// Half a second at a time: is the pointer on the cards, has any card
+    /// been up long enough to go, and has an open conversation been left
+    /// alone long enough to close on its own.
     private func startTicking() {
         guard tick == nil else { return }
         let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
@@ -199,6 +280,14 @@ final class NoticeWindowController {
                 guard let self, let panel = self.panel else { return }
                 let holding = panel.isVisible && panel.frame.contains(NSEvent.mouseLocation)
                 self.center.expire(after: self.lifetime, holding: holding)
+                guard self.conversation != nil else { return }
+                if holding || panel.isKeyWindow {
+                    self.pointerLeftAt = nil
+                } else if let left = self.pointerLeftAt {
+                    if Date().timeIntervalSince(left) > Self.conversationLingers { self.closeConversation() }
+                } else {
+                    self.pointerLeftAt = Date()
+                }
             }
         }
         RunLoop.main.add(timer, forMode: .common)

@@ -339,6 +339,10 @@ enum NotchLayout {
     }
 
 
+    /// The strip at the end of a session's row that opens its conversation
+    /// rather than going to the session.
+    static let conversationGlyphWidth = Design.px(44)
+
     /// Where each listed session's row sits, measured down from the card's
     /// top — the same sum `cardHeight` makes, stopped at each row. The window
     /// controller uses these to tell which session a click landed on, so they

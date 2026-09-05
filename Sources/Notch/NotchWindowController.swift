@@ -34,6 +34,9 @@ final class NotchWindowController {
     private var labelChoices: [(providerID: String, label: CellLabel)] = []
     /// Take the user to a listed session, asked for by clicking its row.
     var onFocusSession: ((AgentSession) -> Void)?
+    /// Open a listed session's conversation, asked for by clicking the glyph
+    /// at the end of its row.
+    var onOpenConversation: ((AgentSession) -> Void)?
     /// The pointer has arrived on a provider's cell — the moment its reading
     /// is about to be looked at.
     var onHoverProvider: ((String) -> Void)?
@@ -413,6 +416,13 @@ final class NotchWindowController {
         )
     }
 
+    /// Whether a point on a session's row is on the conversation glyph at
+    /// its end.
+    private func isOnConversationGlyph(_ local: CGPoint) -> Bool {
+        guard let index = model.hoveredIndex, let card = cardRect(index: index) else { return false }
+        return local.x > card.maxX - NotchLayout.cardPadding - NotchLayout.conversationGlyphWidth
+    }
+
     /// The listed session under a point, if a click there would go somewhere.
     private func session(at local: CGPoint) -> AgentSession? {
         guard model.isExpanded, let index = model.hoveredIndex,
@@ -618,7 +628,11 @@ final class NotchWindowController {
             return
         }
         if let session = session(at: local) {
-            onFocusSession?(session)
+            if session.locator?.transcriptID != nil, isOnConversationGlyph(local) {
+                onOpenConversation?(session)
+            } else {
+                onFocusSession?(session)
+            }
             return
         }
         if notchRect.contains(local),

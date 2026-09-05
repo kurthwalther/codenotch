@@ -212,9 +212,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                  controller?.model.edge ?? .right,
                  controller?.noticeInset ?? 0)
             }
-            notices.open = { [weak noticeCenter] notice in
-                SessionFocus.focus(notice.session)
-                noticeCenter?.dismiss(notice.id)
+            // The glyph at the end of a session's row on the notch's card
+            // opens the same conversation the notice would.
+            controller.onOpenConversation = { [weak notices] session in
+                notices?.show(conversation: Conversation(session: session))
             }
             self.noticeCenter = noticeCenter
             self.notices = notices
