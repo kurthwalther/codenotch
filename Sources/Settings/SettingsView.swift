@@ -64,6 +64,24 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // Only meaningful where the notch is held open by the setting.
+                HStack(spacing: 10) {
+                    Text("Settles after")
+                    Slider(value: $preferences.restAfterSeconds,
+                           in: Preferences.restAfterRange, step: 1)
+                    Text("\(Int(preferences.restAfterSeconds.rounded())) s")
+                        .monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
+                        .foregroundStyle(.secondary)
+                }
+                .disabled(preferences.notchVisibility == .onHover || preferences.notchVisibility == .hidden)
+                Text("Left alone this long under Always show or Auto, the notch draws "
+                     + "smaller and quieter, and its handles fold away. It wakes as the "
+                     + "pointer heads for it, or when an agent starts, finishes or waits.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Picker("Edge", selection: $preferences.notchEdge) {
                     ForEach(NotchEdge.allCases) { Text($0.title).tag($0) }
                 }

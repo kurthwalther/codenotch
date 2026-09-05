@@ -149,6 +149,14 @@ final class NoticeWindowController: ObservableObject {
 
     /// The conversation on show, if one is.
     @Published private(set) var conversation: Conversation?
+
+    /// The pointer is on the cards, or a conversation is open and being
+    /// typed into — attention the notch should count as its own, so it does
+    /// not settle into rest while you are reading beside it.
+    var isEngaged: Bool {
+        guard let panel, panel.isVisible else { return false }
+        return panel.frame.contains(NSEvent.mouseLocation) || (conversation != nil && panel.isKeyWindow)
+    }
     private(set) var edge: NotchEdge = .right
 
     private var panel: NoticePanel?

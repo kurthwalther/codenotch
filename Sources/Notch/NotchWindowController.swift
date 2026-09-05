@@ -56,7 +56,15 @@ final class NotchWindowController {
     /// after this the notch draws smaller and quieter.
     private var lastAttention = Date()
     private var statesBefore: [String: AgentSession.State] = [:]
-    static let restAfter: TimeInterval = 10
+    /// How long a notch held open is left alone before it settles, from
+    /// Settings.
+    var restAfter: TimeInterval = defaultRestAfter
+    static let defaultRestAfter: TimeInterval = 10
+    /// Somewhere else attention may be — the note beside the notch — asked
+    /// before settling, so reading or typing there keeps the notch up.
+    var attentionElsewhere: () -> Bool = { false }
+    /// The standing visibility, for the mode that decides by itself.
+    private var visibility: NotchVisibility = .onHover
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
     private var secondaryChoices: [(providerID: String, windowID: String?)] = []
@@ -180,8 +188,9 @@ final class NotchWindowController {
     /// Resting is only for a notch held open by the setting: on hover it
     /// folds away instead, and a pin is a request to read it.
     private func checkResting(now: Date = Date()) {
+        if attentionElsewhere() { lastAttention = now }
         let shouldRest = model.isAlwaysOn && model.isExpanded && !hiddenForFullscreen
-            && now.timeIntervalSince(lastAttention) > Self.restAfter
+            && now.timeIntervalSince(lastAttention) > restAfter
         guard shouldRest != model.isResting else { return }
         if shouldRest {
             withAnimation(.easeInOut(duration: 0.6)) { model.isResting = true }
@@ -204,6 +213,7 @@ final class NotchWindowController {
         var states: [String: AgentSession.State] = [:]
         for session in sessions.values.flatMap({ $0 }) { states[session.id] = session.state }
         defer { statesBefore = states }
+        followSessions(open: !states.isEmpty)
         let changed = states.contains { id, state in
             guard let before = statesBefore[id] else { return state != .idle }
             return before != state
@@ -711,8 +721,41 @@ final class NotchWindowController {
     private static let arrivalBeat: TimeInterval = 0.05
     private var edgeChange = 0
 
+    /// Auto: held open like Always show while any session exists, folded
+    /// away like Show on hover when none does — the notch is there for the
+    /// agents, and goes when they do.
+    private func followSessions(open: Bool) {
+        guard visibility == .auto, model.isAlwaysOn != open else { return }
+        model.isAlwaysOn = open
+        if open {
+            foldWork?.cancel()
+            foldWork = nil
+            wake()
+            withAnimation(NotchMotion.unfold) { model.isExpanded = true }
+        } else {
+            model.isResting = false
+            withAnimation(NotchMotion.unfold) {
+                model.isExpanded = false
+                model.hoveredIndex = nil
+            }
+        }
+        updateInteractiveRects()
+    }
+
     func apply(_ visibility: NotchVisibility) {
+        self.visibility = visibility
         switch visibility {
+        case .auto:
+            panel?.orderFrontRegardless()
+            model.isPinned = false
+            // Decided by the sessions from here on; start from what they are.
+            model.isAlwaysOn = !model.sessions.values.allSatisfy(\.isEmpty)
+            foldWork?.cancel()
+            foldWork = nil
+            withAnimation(NotchMotion.unfold) {
+                model.isExpanded = model.isAlwaysOn
+                if !model.isAlwaysOn { model.hoveredIndex = nil }
+            }
         case .alwaysShow:
             panel?.orderFrontRegardless()
             model.isAlwaysOn = true

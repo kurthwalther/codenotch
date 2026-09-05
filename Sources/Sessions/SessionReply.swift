@@ -76,6 +76,20 @@ enum SessionReply {
                            "--worktree", cwd, "--output", "json"])
     }
 
+    /// What the tool said went wrong, in its own JSON on standard output —
+    /// which is where it puts it, exit code or no exit code. The one refusal
+    /// worth translating is the feature being off in the app's settings.
+    static func explain(_ output: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: output) as? [String: Any],
+              (json["kind"] as? String) == "cli_error",
+              let error = json["error"] as? [String: Any]
+        else { return nil }
+        if (error["code"] as? String) == "feature_disabled" {
+            return "Turn on Agent orchestration in super.engineering: Settings › Experimental."
+        }
+        return error["message"] as? String
+    }
+
     /// The stable id of the one Claude agent listed, or nil when there is
     /// none or more than one that can take a send.
     static func pickTarget(fromAgentsJSON data: Data) -> String? {
@@ -108,11 +122,12 @@ enum SessionReply {
                 if process.terminationStatus == 0 {
                     continuation.resume(returning: data)
                 } else {
-                    let message = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+                    let stderr = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
                         .trimmingCharacters(in: .whitespacesAndNewlines)
-                    continuation.resume(throwing: ReplyError(
-                        errorDescription: message?.isEmpty == false ? message : "sc exited \(process.terminationStatus)"
-                    ))
+                    let message = explain(data)
+                        ?? (stderr?.isEmpty == false ? stderr : nil)
+                        ?? "super.engineering refused (exit \(process.terminationStatus))"
+                    continuation.resume(throwing: ReplyError(errorDescription: message))
                 }
             }
             do { try process.run() } catch { continuation.resume(throwing: error) }

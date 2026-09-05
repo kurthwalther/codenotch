@@ -94,7 +94,7 @@ final class ClosingRoundTests: XCTestCase {
     func testRestingIsSmallerAndQuieterButNeverGone() {
         XCTAssertEqual(NotchViewModel.restingScale, 0.8, accuracy: 0.0001)
         XCTAssertEqual(NotchViewModel.restingOpacity, 0.65, accuracy: 0.0001)
-        XCTAssertEqual(NotchWindowController.restAfter, 10, accuracy: 0.0001)
+        XCTAssertEqual(NotchWindowController.defaultRestAfter, 10, accuracy: 0.0001)
     }
 
     /// A rendered cell at rest, for a look: set `REST_RENDER_PATH`.

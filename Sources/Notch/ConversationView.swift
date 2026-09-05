@@ -123,10 +123,13 @@ struct ConversationView: View {
                 .help("Send — Enter. Option-Enter for a new line.")
             }
             HStack(spacing: Design.px(20)) {
+                // A refusal is the one thing here that must not be missed:
+                // it says why the line did not go, and often what to do.
                 Text(status)
                     .font(Typography.cardBody)
-                    .foregroundStyle(Palette.textSecondary)
-                    .lineLimit(1)
+                    .foregroundStyle(failed ? Palette.watch : Palette.textSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Button(action: open) {
                     Text("Open")
@@ -140,6 +143,11 @@ struct ConversationView: View {
                 .help("Bring the session's window forward")
             }
         }
+    }
+
+    private var failed: Bool {
+        if case .failed = conversation.sendState { return true }
+        return false
     }
 
     private var status: String {

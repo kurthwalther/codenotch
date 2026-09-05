@@ -95,6 +95,14 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
     }
 
+    /// How long a notch held open is left alone before it settles smaller
+    /// and quieter.
+    @Published var restAfterSeconds: Double {
+        didSet { defaults.set(restAfterSeconds, forKey: Keys.restAfter) }
+    }
+
+    static let restAfterRange: ClosedRange<Double> = 3...60
+
     /// A note beside the notch when an agent finishes or needs you.
     @Published var noticesEnabled: Bool {
         didSet { defaults.set(noticesEnabled, forKey: Keys.notices) }
@@ -141,6 +149,7 @@ final class Preferences: ObservableObject {
         static let hideInFullscreen = "hideInFullscreen"
         static let notchPinned = "notchPinned"
         static let notices = "noticesEnabled"
+        static let restAfter = "restAfterSeconds"
         static let noticeSeconds = "noticeSeconds"
     }
 
@@ -224,6 +233,8 @@ final class Preferences: ObservableObject {
         self.hideInFullscreen = defaults.object(forKey: Keys.hideInFullscreen) as? Bool ?? true
         self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
         self.noticesEnabled = defaults.object(forKey: Keys.notices) as? Bool ?? true
+        let rest = defaults.object(forKey: Keys.restAfter) as? Double ?? 10
+        self.restAfterSeconds = min(max(rest, Self.restAfterRange.lowerBound), Self.restAfterRange.upperBound)
         let seconds = defaults.object(forKey: Keys.noticeSeconds) as? Double ?? 12
         self.noticeSeconds = min(max(seconds, Self.noticeSecondsRange.lowerBound),
                                  Self.noticeSecondsRange.upperBound)

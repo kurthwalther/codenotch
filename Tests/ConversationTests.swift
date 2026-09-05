@@ -71,3 +71,42 @@ final class ConversationTests: XCTestCase {
         XCTAssertEqual(state, .idle)
     }
 }
+
+/// What the tool's refusals are turned into.
+final class ReplyErrorTests: XCTestCase {
+    func testAFeatureSwitchedOffIsSaidPlainly() {
+        let output = Data(#"{"kind":"cli_error","error":{"code":"feature_disabled","message":"agent orchestration is disabled in super.engineering settings; …"}}"#.utf8)
+        XCTAssertEqual(SessionReply.explain(output),
+                       "Turn on Agent orchestration in super.engineering: Settings › Experimental.")
+    }
+
+    func testOtherRefusalsKeepTheirOwnWords() {
+        let output = Data(#"{"kind":"cli_error","error":{"code":"target_busy","message":"the agent is mid-turn"}}"#.utf8)
+        XCTAssertEqual(SessionReply.explain(output), "the agent is mid-turn")
+        XCTAssertNil(SessionReply.explain(Data(#"{"kind":"agents"}"#.utf8)))
+        XCTAssertNil(SessionReply.explain(Data("not json".utf8)))
+    }
+}
+
+/// The visibility that decides by itself, and the rest that waits as long as
+/// you say.
+@MainActor
+final class AutoVisibilityTests: XCTestCase {
+    func testAutoIsOfferedBetweenAlwaysAndHover() {
+        XCTAssertEqual(NotchVisibility.allCases, [.alwaysShow, .auto, .onHover, .hidden])
+        XCTAssertEqual(NotchVisibility.auto.title, "Auto")
+        XCTAssertEqual(NotchVisibility(rawValue: "auto"), .auto)
+    }
+
+    func testTheRestDelayIsRememberedAndBounded() {
+        let name = "rest-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let first = Preferences(defaults: defaults)
+        XCTAssertEqual(first.restAfterSeconds, 10, accuracy: 0.001)
+        first.restAfterSeconds = 25
+        XCTAssertEqual(Preferences(defaults: defaults).restAfterSeconds, 25, accuracy: 0.001)
+        defaults.set(999, forKey: "restAfterSeconds")
+        XCTAssertEqual(Preferences(defaults: defaults).restAfterSeconds, 60, accuracy: 0.001)
+    }
+}

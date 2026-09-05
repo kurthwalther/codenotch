@@ -217,6 +217,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.onOpenConversation = { [weak notices] session in
                 notices?.show(conversation: Conversation(session: session))
             }
+            // Reading or typing beside the notch is attention it counts as
+            // its own: it does not settle while you are there.
+            controller.attentionElsewhere = { [weak notices] in notices?.isEngaged ?? false }
             self.noticeCenter = noticeCenter
             self.notices = notices
             controller.model.$sessions
@@ -231,6 +234,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .store(in: &cancellables)
             controller.rememberedPin = preferences.notchPinned
             controller.onPinChanged = { preferences.notchPinned = $0 }
+            preferences.$restAfterSeconds
+                .sink { [weak controller] in controller?.restAfter = $0 }
+                .store(in: &cancellables)
             preferences.$hideInFullscreen
                 .removeDuplicates()
                 .sink { [weak controller] in controller?.apply(hidesInFullscreen: $0) }

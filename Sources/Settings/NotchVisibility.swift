@@ -9,6 +9,8 @@ import Foundation
 enum NotchVisibility: String, CaseIterable, Identifiable {
     /// Pinned open. The readings are always on screen.
     case alwaysShow
+    /// Open while any agent session exists, a pill when none does.
+    case auto
     /// A pill at the edge that unfolds when the pointer reaches it. The default.
     case onHover
     /// Nothing on screen at all.
@@ -19,6 +21,7 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .alwaysShow: return "Always show"
+        case .auto:       return "Auto"
         case .onHover:    return "Show on hover"
         case .hidden:     return "Hide"
         }
@@ -28,6 +31,9 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
         switch self {
         case .alwaysShow:
             return "The notch stays open with every reading visible."
+        case .auto:
+            return "Open like Always show while any agent session exists; a "
+                 + "pill at the edge, like Show on hover, when none does."
         case .onHover:
             return "A small pill at the screen edge that opens when you reach it."
         case .hidden:
