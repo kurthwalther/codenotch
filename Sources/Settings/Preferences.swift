@@ -61,6 +61,20 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(secondaryWindows, forKey: Keys.secondaryWindows) }
     }
 
+    /// What the number under each provider's ring says. Absent means the
+    /// percentage.
+    @Published var cellLabels: [String: String] {
+        didSet { defaults.set(cellLabels, forKey: Keys.cellLabels) }
+    }
+
+    /// Where the colours change, as shares left.
+    @Published var thresholds: UsageThresholds {
+        didSet {
+            defaults.set(thresholds.watchBelowLeft, forKey: Keys.watchBelow)
+            defaults.set(thresholds.criticalBelowLeft, forKey: Keys.criticalBelow)
+        }
+    }
+
     /// How big the notch is, as a share of the design frame's size. The
     /// tooltip is not affected.
     @Published var notchScale: Double {
@@ -108,6 +122,9 @@ final class Preferences: ObservableObject {
         static let keepDisplay = "keepDisplayAwake"
         static let ringWindows = "ringWindows"
         static let secondaryWindows = "secondaryWindows"
+        static let cellLabels = "cellLabels"
+        static let watchBelow = "watchBelowLeft"
+        static let criticalBelow = "criticalBelowLeft"
         static let notchScale = "notchScale"
         static let hideInFullscreen = "hideInFullscreen"
         static let notchPinned = "notchPinned"
@@ -176,6 +193,13 @@ final class Preferences: ObservableObject {
         self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
         self.ringWindows = defaults.dictionary(forKey: Keys.ringWindows) as? [String: String] ?? [:]
         self.secondaryWindows = defaults.dictionary(forKey: Keys.secondaryWindows) as? [String: String] ?? [:]
+        self.cellLabels = defaults.dictionary(forKey: Keys.cellLabels) as? [String: String] ?? [:]
+        self.thresholds = UsageThresholds(
+            watchBelowLeft: defaults.object(forKey: Keys.watchBelow) as? Double
+                ?? UsageThresholds.standard.watchBelowLeft,
+            criticalBelowLeft: defaults.object(forKey: Keys.criticalBelow) as? Double
+                ?? UsageThresholds.standard.criticalBelowLeft
+        ).ordered
         // Smaller than the frame by default: the notch carries a ring, a
         // glyph and a number, and at the frame's size it was more furniture
         // than reading. Absent means never chosen.
@@ -207,6 +231,14 @@ final class Preferences: ObservableObject {
     }
 
     func secondaryWindow(for providerID: String) -> String? { secondaryWindows[providerID] }
+
+    func cellLabel(for providerID: String) -> CellLabel {
+        cellLabels[providerID].flatMap(CellLabel.init(rawValue:)) ?? .percentLeft
+    }
+
+    func setCellLabel(_ label: CellLabel, for providerID: String) {
+        cellLabels[providerID] = label == .percentLeft ? nil : label.rawValue
+    }
 
     func setSecondaryWindow(_ windowID: String?, for providerID: String) {
         secondaryWindows[providerID] = windowID

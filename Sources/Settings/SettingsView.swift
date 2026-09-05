@@ -98,6 +98,26 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // Where the colours turn, in the terms the rings draw — what
+                // is left. Red is kept below yellow whichever slider moves.
+                thresholdSlider("Yellow below", value: Binding(
+                    get: { preferences.thresholds.watchBelowLeft },
+                    set: { preferences.thresholds = UsageThresholds(
+                        watchBelowLeft: $0, criticalBelowLeft: preferences.thresholds.criticalBelowLeft
+                    ).ordered }
+                ), range: 0.2...0.8)
+                thresholdSlider("Red below", value: Binding(
+                    get: { preferences.thresholds.criticalBelowLeft },
+                    set: { preferences.thresholds = UsageThresholds(
+                        watchBelowLeft: preferences.thresholds.watchBelowLeft, criticalBelowLeft: $0
+                    ).ordered }
+                ), range: 0.05...0.6)
+                Text("Rings and bars are green until this much of a limit is left, "
+                     + "then yellow, then red. The frame draws 50% and 30%.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 // "App icon", not "Icon": the two rows above it are about the
                 // notch, and on its own the word would read as another of them.
                 Picker("App icon", selection: $preferences.appPresence) {
@@ -215,12 +235,25 @@ struct SettingsView: View {
 
     static let authorURL = URL(string: "https://x.com/hivinz_")!
 
+    private func thresholdSlider(_ title: String, value: Binding<Double>,
+                                 range: ClosedRange<Double>) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .frame(width: 92, alignment: .leading)
+            Slider(value: value, in: range, step: 0.05)
+            Text("\(Int((value.wrappedValue * 100).rounded()))% left")
+                .monospacedDigit()
+                .frame(width: 64, alignment: .trailing)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     /// Narrower than the tabbed version needed: without a row of tab titles to
     /// fit, the width is set by the account rows alone.
     static let width: CGFloat = 500
     /// Tall enough that Startup and Updates are visible without scrolling —
     /// four account rows push everything below them a long way down.
-    static let height: CGFloat = 680
+    static let height: CGFloat = 760
 
     /// Says the one thing people will try and find does not work. A power
     /// assertion is exactly what Caffeine and Amphetamine hold, and it stops
@@ -363,6 +396,30 @@ private struct AccountRow: View {
                     .font(.caption)
                     .padding(.leading, 26)
             }
+            if isConnected, !provider.windows.isEmpty {
+                labelPicker
+                    .font(.caption)
+                    .padding(.leading, 26)
+            }
+        }
+    }
+
+    /// What the number under the ring says: the percentage the ring draws,
+    /// or how long until the window comes back.
+    private var labelPicker: some View {
+        HStack(spacing: 8) {
+            Text("Number shows")
+                .foregroundStyle(.secondary)
+            Picker("Number shows", selection: Binding(
+                get: { preferences.cellLabel(for: provider.id) },
+                set: { preferences.setCellLabel($0, for: provider.id) }
+            )) {
+                ForEach(CellLabel.allCases) { Text($0.title).tag($0) }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .fixedSize()
         }
     }
 

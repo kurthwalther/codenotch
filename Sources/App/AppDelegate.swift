@@ -149,11 +149,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // choices are laid over it here, so a change in Settings or the
             // menu re-points the ring without a fetch.
             store.$snapshots
-                .combineLatest(preferences.$ringWindows, preferences.$secondaryWindows)
+                .combineLatest(preferences.$ringWindows, preferences.$secondaryWindows,
+                               preferences.$cellLabels)
                 .receive(on: RunLoop.main)
-                .sink { [weak controller] snapshots, rings, seconds in
+                .sink { [weak controller] snapshots, rings, seconds, labels in
                     let chosen = snapshots.map {
-                        $0.choosingHeadline(rings[$0.id]).choosingSecondary(seconds[$0.id])
+                        $0.choosingHeadline(rings[$0.id])
+                            .choosingSecondary(seconds[$0.id])
+                            .choosingLabel(labels[$0.id].flatMap(CellLabel.init(rawValue:)))
                     }
                     // Room for the bar is made before the cells are handed
                     // the readings, so both arrive in one layout.
@@ -170,6 +173,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.onChooseSecondaryWindow = { providerID, windowID in
                 preferences.setSecondaryWindow(windowID, for: providerID)
             }
+            controller.onChooseLabel = { providerID, label in
+                preferences.setCellLabel(label, for: providerID)
+            }
+            preferences.$thresholds
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.model.thresholds = $0 }
+                .store(in: &cancellables)
 
             // Measurements behind the layout. Applied synchronously, on the
             // thread the settings change on, so the first layout already has

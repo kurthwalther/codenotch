@@ -129,6 +129,28 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// A second window to show in the cell beside the ring's, chosen by the
     /// user. Nil, or the ring's own window, means none.
     var secondaryID: String?
+    /// What the number under the ring says.
+    var cellLabel: CellLabel = .percentLeft
+
+    /// The same reading with the number under the ring saying something else.
+    func choosingLabel(_ label: CellLabel?) -> ProviderSnapshot {
+        var chosen = self
+        chosen.cellLabel = label ?? .percentLeft
+        return chosen
+    }
+
+    /// The number under the ring, as chosen — falling back to the percentage
+    /// when a provider never says when its window resets.
+    func cellText(now: Date) -> String {
+        switch cellLabel {
+        case .percentLeft:
+            return headlineText
+        case .timeToReset:
+            guard let resetsAt = headline?.resetsAt, hasReading else { return headlineText }
+            let seconds = resetsAt.timeIntervalSince(now)
+            return seconds > 0 ? ElapsedCopy.compact(seconds) : "now"
+        }
+    }
 
     /// The second window, when it is here and is not the ring's own.
     var secondary: LimitWindow? {

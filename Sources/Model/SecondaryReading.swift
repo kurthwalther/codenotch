@@ -7,5 +7,7 @@ struct SecondaryReading: Equatable {
     let usedFraction: Double
 
     var remaining: Double { max(0, 1 - usedFraction) }
-    var band: UsageBand { UsageBand.band(for: usedFraction) }
+    func band(_ thresholds: UsageThresholds) -> UsageBand {
+        UsageBand.band(for: usedFraction, thresholds: thresholds)
+    }
 }

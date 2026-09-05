@@ -30,12 +30,16 @@ struct ProviderRing: View {
     /// `NotchLayout` at render time, and SwiftUI only renders again when
     /// something it was *given* has changed.
     var scale: CGFloat = Design.notchFactor
+    /// Left alone for a while under Always show: the activity arc fades
+    /// further than the rest, to a whisper.
+    var isResting: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.usageThresholds) private var thresholds
     @State private var spin: Double = 0
 
     private var band: UsageBand {
-        isBlocked ? .exhausted : UsageBand.band(for: usedFraction ?? 0)
+        isBlocked ? .exhausted : UsageBand.band(for: usedFraction ?? 0, thresholds: thresholds)
     }
     /// How much of the circle the arc covers: what is left. Blocked keeps the
     /// arc — the number under it is still true — and says "paused" with the
@@ -85,6 +89,7 @@ struct ProviderRing: View {
 
             if let activity, activity.state != .idle {
                 ActivityArc(summary: activity, scale: scale)
+                    .opacity(isResting ? 0.5 : 1)
             }
         }
         .frame(width: NotchLayout.ringDiameter, height: NotchLayout.ringDiameter)
@@ -188,12 +193,18 @@ struct ProviderCell: View {
     var reservesBar: Bool = NotchLayout.reservesSecondaryBar
     /// See `ProviderRing.scale`.
     var scale: CGFloat = Design.notchFactor
+    /// See `ProviderRing.isResting`.
+    var isResting: Bool = false
+    /// For a number that counts down to the reset.
+    var now: Date = Date()
+
+    @Environment(\.usageThresholds) private var thresholds
 
     private var secondary: SecondaryReading? { snapshot.secondaryReading }
 
     /// A dash, not "0%": nothing read is not the same as nothing used.
     private var percentText: String {
-        snapshot.hasReading ? snapshot.headlineText : "—"
+        snapshot.hasReading ? snapshot.cellText(now: now) : "—"
     }
 
     var body: some View {
@@ -210,7 +221,8 @@ struct ProviderCell: View {
                 isBlocked: snapshot.block != nil,
                 activity: activity,
                 isRefreshing: isRefreshing,
-                scale: scale
+                scale: scale,
+                isResting: isResting
             )
             Text(percentText)
                 .font(Typography.percent)
@@ -237,7 +249,7 @@ struct ProviderCell: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Palette.barTrack)
                     Capsule()
-                        .fill(secondary.band.color)
+                        .fill(secondary.band(thresholds).color)
                         .frame(width: max(proxy.size.height, proxy.size.width * CGFloat(secondary.remaining)))
                         .animation(NotchMotion.reading, value: secondary)
                 }

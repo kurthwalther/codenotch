@@ -27,6 +27,21 @@ enum ElapsedCopy {
         return "\(days) \(dayWord) \(restHours) hr"
     }
 
+    /// The same span, squeezed for the cell under a ring: "2h 10m", "45m",
+    /// "3d 4h". Never more than two parts, and never the word "just now".
+    static func compact(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int((max(0, seconds) / 60).rounded()))
+        if minutes < 60 { return "\(minutes)m" }
+        let hours = minutes / 60
+        let restMinutes = minutes % 60
+        if hours < 24 {
+            return restMinutes == 0 ? "\(hours)h" : "\(hours)h \(restMinutes)m"
+        }
+        let days = hours / 24
+        let restHours = hours % 24
+        return restHours == 0 ? "\(days)d" : "\(days)d \(restHours)h"
+    }
+
     static func text(since: Date, now: Date = Date()) -> String {
         let seconds = max(0, now.timeIntervalSince(since))
         if seconds < 45 { return "just now" }

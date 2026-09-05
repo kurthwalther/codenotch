@@ -14,7 +14,11 @@ struct NotchRootView: View {
             ZStack(alignment: .topLeading) {
                 Color.clear
 
-                notch(place)
+                // The notch and its handles, drawn as one so that at rest
+                // they shrink together about the bezel and stay flush to it.
+                // The tooltip is not in here: at rest there is none.
+                restable(place) {
+                    notch(place)
 
                 // Outside the notch and outside its clip: the orb hangs past
                 // the end of the shape, tucked into the corner the far flare
@@ -58,6 +62,7 @@ struct NotchRootView: View {
                         .opacity(model.isExpanded ? 1 : 0)
                         .animation(motion(awakeMotion), value: model.isExpanded)
                 }
+                }
 
                 if let snapshot = model.hoveredSnapshot, let index = model.hoveredIndex,
                    model.isExpanded {
@@ -86,6 +91,28 @@ struct NotchRootView: View {
             .animation(motion(NotchMotion.glide), value: model.hoveredIndex)
         }
         .animation(motion(NotchMotion.unfold), value: model.isExpanded)
+    }
+
+    /// The resting treatment: smaller about the bezel's midpoint, and the
+    /// contents — never the black body, which is the silhouette — quieter.
+    /// With reduced motion the shrink is skipped and only the dimming stays.
+    private func restable<Content: View>(_ place: NotchPlacement,
+                                         @ViewBuilder content: () -> Content) -> some View {
+        let shrink = model.isResting && !reduceMotion
+        return ZStack(alignment: .topLeading) { content() }
+            .frame(width: place.panelSize.width, height: place.panelSize.height, alignment: .topLeading)
+            .scaleEffect(shrink ? NotchViewModel.restingScale : 1, anchor: bezelAnchor)
+            .environment(\.usageThresholds, model.thresholds)
+    }
+
+    /// The midpoint of the bezel side, in unit coordinates.
+    private var bezelAnchor: UnitPoint {
+        switch model.edge {
+        case .right:  return .trailing
+        case .left:   return .leading
+        case .top:    return .top
+        case .bottom: return .bottom
+        }
     }
 
     /// Opening and closing are not mirror images. Appearing, the arc waits its
@@ -139,7 +166,9 @@ struct NotchRootView: View {
                 // Read here, in a body that `layoutVersion` re-runs, and
                 // handed down as values — so a change reaches the cells.
                 reservesBar: NotchLayout.reservesSecondaryBar,
-                scale: Design.notchFactor
+                scale: Design.notchFactor,
+                isResting: model.isResting,
+                now: model.now
             )
                 // Pinned to what the cell claims along the stack, or the drawn
                 // rings stop lining up with the centres `ringCenter` hands to
@@ -171,6 +200,7 @@ struct NotchRootView: View {
                     .frame(height: NotchLayout.bodyDepth(for: model.edge))
             }
         }
+        .opacity(model.isResting ? NotchViewModel.restingOpacity : 1)
         .allowsHitTesting(model.isExpanded)
     }
 

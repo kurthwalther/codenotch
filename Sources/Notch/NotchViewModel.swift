@@ -92,6 +92,20 @@ final class NotchViewModel: ObservableObject {
     /// scale, or room for the bar — so the root view's body runs again and
     /// hands the new values down.
     @Published var layoutVersion = 0
+
+    /// Left alone for a while under Always show. The notch draws smaller and
+    /// quieter, and wakes the moment the pointer heads for it — or an agent
+    /// starts waiting on you.
+    @Published var isResting = false
+
+    /// Where the colours change, from Settings.
+    @Published var thresholds = UsageThresholds.standard
+
+    /// How much smaller the notch draws at rest, about the point where it
+    /// meets the bezel, so it stays flush.
+    static let restingScale: CGFloat = 0.8
+    /// And how much quieter: rings, glyphs, numbers, bars and handles.
+    static let restingOpacity: Double = 0.5
     /// Which screen edge the notch is welded to. Everything geometric reads
     /// this through `placement` rather than assuming an axis.
     @Published var edge: NotchEdge = .right

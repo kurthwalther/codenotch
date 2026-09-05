@@ -335,7 +335,11 @@ private struct LimitWindowRow: View {
     /// How fast it is going, when enough readings say.
     var pace: UsagePace?
 
-    private var band: UsageBand { UsageBand.band(for: window.usedFraction ?? 0) }
+    @Environment(\.usageThresholds) private var thresholds
+
+    private var band: UsageBand {
+        UsageBand.band(for: window.usedFraction ?? 0, thresholds: thresholds)
+    }
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding }
     /// The bar is the room you still have, and it empties as you spend it —
     /// the same reading as the ring, so the two never pull opposite ways.

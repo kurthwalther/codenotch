@@ -19,7 +19,7 @@ final class SecondaryWindowTests: XCTestCase {
             .choosingSecondary("weekly_scoped")
         XCTAssertEqual(s.secondary?.id, "weekly_scoped")
         XCTAssertEqual(s.secondaryReading?.remaining ?? -1, 0.58, accuracy: 0.0001)
-        XCTAssertEqual(s.secondaryReading?.band, .ample)
+        XCTAssertEqual(s.secondaryReading?.band(.standard), .ample)
     }
 
     /// It cannot be the ring's own window — that is one gauge shown twice.

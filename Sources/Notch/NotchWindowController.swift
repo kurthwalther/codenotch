@@ -29,6 +29,9 @@ final class NotchWindowController {
     var onChooseRingWindow: ((_ providerID: String, _ windowID: String) -> Void)?
     /// Give a provider a second window, or none, chosen from the menu.
     var onChooseSecondaryWindow: ((_ providerID: String, _ windowID: String?) -> Void)?
+    /// Say what a provider's number shows, chosen from the menu.
+    var onChooseLabel: ((_ providerID: String, _ label: CellLabel) -> Void)?
+    private var labelChoices: [(providerID: String, label: CellLabel)] = []
     /// Take the user to a listed session, asked for by clicking its row.
     var onFocusSession: ((AgentSession) -> Void)?
     /// The pointer has arrived on a provider's cell — the moment its reading
@@ -44,6 +47,13 @@ final class NotchWindowController {
     private var hidesInFullscreen = false
     private var hiddenForFullscreen = false
     private var fullscreenTick = 0
+
+    /// When the pointer was last on the notch or its card, or something
+    /// else last asked for attention. Under Always show, ten quiet seconds
+    /// after this the notch draws smaller and quieter.
+    private var lastAttention = Date()
+    private var waitingBefore: Set<String> = []
+    static let restAfter: TimeInterval = 10
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
     private var secondaryChoices: [(providerID: String, windowID: String?)] = []
@@ -91,6 +101,12 @@ final class NotchWindowController {
         model.$hoveredIndex
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.updateInteractiveRects() }
+            }
+            .store(in: &cancellables)
+
+        model.$sessions
+            .sink { [weak self] sessions in
+                MainActor.assumeIsolated { self?.noticeWaiting(sessions) }
             }
             .store(in: &cancellables)
 
@@ -144,6 +160,35 @@ final class NotchWindowController {
     func apply(hidesInFullscreen: Bool) {
         self.hidesInFullscreen = hidesInFullscreen
         checkFullscreen(force: true)
+    }
+
+    /// Resting is only for a notch held open by the setting: on hover it
+    /// folds away instead, and a pin is a request to read it.
+    private func checkResting(now: Date = Date()) {
+        let shouldRest = model.isAlwaysOn && model.isExpanded && !hiddenForFullscreen
+            && now.timeIntervalSince(lastAttention) > Self.restAfter
+        guard shouldRest != model.isResting else { return }
+        if shouldRest {
+            withAnimation(.easeInOut(duration: 0.6)) { model.isResting = true }
+        } else {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { model.isResting = false }
+        }
+    }
+
+    /// Something worth looking at: the notch comes back to full size and
+    /// stays there for another quiet spell.
+    func wake() {
+        lastAttention = Date()
+        checkResting()
+    }
+
+    /// An agent that has just started waiting on you lifts the notch's head
+    /// for a moment, the way a colleague clears their throat.
+    private func noticeWaiting(_ sessions: [String: [AgentSession]]) {
+        let waiting = Set(sessions.values.flatMap { $0 }.filter { $0.state == .waiting }.map(\.id))
+        defer { waitingBefore = waiting }
+        guard !waiting.subtracting(waitingBefore).isEmpty else { return }
+        wake()
     }
 
     /// Asked on the cursor poll, a few times a second at most: the window
@@ -388,6 +433,7 @@ final class NotchWindowController {
                 self?.followUsableAreaIfItMoved()
                 self?.checkFullscreen()
                 self?.cursorMoved()
+                self?.checkResting()
             }
         }
         RunLoop.main.add(poll, forMode: .common)
@@ -428,6 +474,13 @@ final class NotchWindowController {
             .flatMap(tooltipRect(index:))
             .map { model.isExpanded && $0.contains(local) } ?? false
         setExpanded(liveRect.contains(local) || overTooltip)
+        // On the notch, its handles or its card counts as attention — judged
+        // against the full-size regions, so a resting notch wakes as the
+        // pointer heads for it rather than once it has arrived.
+        if liveRect.contains(local) || overTooltip {
+            lastAttention = Date()
+            if model.isResting { checkResting() }
+        }
 
         var target: Int?
         if model.isExpanded, notchRect.contains(local) {
@@ -531,6 +584,7 @@ final class NotchWindowController {
     /// A click on a ring refetches that provider; a click anywhere else on the
     /// open notch pins it. The ring is the more specific target, so it wins.
     func handleClick() {
+        lastAttention = Date()
         guard let panel, model.isExpanded else { return togglePinned() }
         let local = localCursor(in: panel.frame)
 
@@ -703,6 +757,7 @@ final class NotchWindowController {
 
     private func contextMenu() -> NSMenu {
         Log.usage.debug("context menu opened")
+        wake()
         let menu = NSMenu()
         // AppKit otherwise decides enablement itself and overrules the line
         // below. Turning it off means every item has to say so for itself.
@@ -782,7 +837,31 @@ final class NotchWindowController {
             menu.addItem(parent)
         }
         secondaryChoices = seconds
-        if !choices.isEmpty { menu.addItem(.separator()) }
+
+        // And what the number says, for every provider that says when it
+        // resets — the percentage, or the time until then.
+        var labels: [(providerID: String, label: CellLabel)] = []
+        for snapshot in model.snapshots where snapshot.headline?.resetsAt != nil {
+            let submenu = NSMenu()
+            for label in CellLabel.allCases {
+                let item = NSMenuItem(title: label.title,
+                                      action: #selector(MenuActions.chooseLabel(_:)),
+                                      keyEquivalent: "")
+                item.target = menuActions
+                item.tag = labels.count
+                item.isEnabled = true
+                item.state = label == snapshot.cellLabel ? .on : .off
+                labels.append((snapshot.id, label))
+                submenu.addItem(item)
+            }
+            let parent = NSMenuItem(title: "\(snapshot.displayName) number shows",
+                                    action: nil, keyEquivalent: "")
+            parent.isEnabled = true
+            parent.submenu = submenu
+            menu.addItem(parent)
+        }
+        labelChoices = labels
+        if !choices.isEmpty || !labels.isEmpty { menu.addItem(.separator()) }
 
         let refresh = NSMenuItem(
             title: "Refresh now",
@@ -824,6 +903,10 @@ final class NotchWindowController {
         chooseSecondary: { [weak self] index in
             guard let self, let choice = self.secondaryChoices[safe: index] else { return }
             self.onChooseSecondaryWindow?(choice.providerID, choice.windowID)
+        },
+        chooseLabel: { [weak self] index in
+            guard let self, let choice = self.labelChoices[safe: index] else { return }
+            self.onChooseLabel?(choice.providerID, choice.label)
         }
     )
 }
@@ -837,19 +920,22 @@ final class MenuActions: NSObject {
     private let pin: () -> Void
     private let chooseRing: (Int) -> Void
     private let chooseSecondary: (Int) -> Void
+    private let chooseLabel: (Int) -> Void
 
     init(
         refresh: @escaping () -> Void,
         signIn: @escaping (Int) -> Void,
         togglePinned: @escaping () -> Void,
         chooseRing: @escaping (Int) -> Void,
-        chooseSecondary: @escaping (Int) -> Void
+        chooseSecondary: @escaping (Int) -> Void,
+        chooseLabel: @escaping (Int) -> Void
     ) {
         self.refresh = refresh
         self.signIn = signIn
         self.pin = togglePinned
         self.chooseRing = chooseRing
         self.chooseSecondary = chooseSecondary
+        self.chooseLabel = chooseLabel
     }
 
     @objc func refreshNow(_ sender: Any?) { refresh() }
@@ -868,6 +954,11 @@ final class MenuActions: NSObject {
     @objc func chooseSecondary(_ sender: Any?) {
         guard let item = sender as? NSMenuItem else { return }
         chooseSecondary(item.tag)
+    }
+
+    @objc func chooseLabel(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem else { return }
+        chooseLabel(item.tag)
     }
 }
 
