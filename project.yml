@@ -79,8 +79,14 @@ targets:
         # Set explicitly so Sparkle never asks on first launch. Left unset, it
         # shows a "check for updates automatically?" prompt, which is exactly
         # the permission this is meant to avoid.
-        SUEnableAutomaticChecks: true
-        SUAutomaticallyUpdate: true
+        #
+        # Both off in this fork. This build carries local changes, and the
+        # feed above serves the author's stock app — a scheduled check would
+        # download it and quietly replace this build on the next launch.
+        # "Check now" in Settings still works, and would do the same, so it
+        # is for looking, not for installing.
+        SUEnableAutomaticChecks: false
+        SUAutomaticallyUpdate: false
         SUScheduledCheckInterval: 86400
     settings:
       base:

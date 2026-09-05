@@ -39,10 +39,16 @@ final class ResetCopyTests: XCTestCase {
 
     /// The frame writes "Resets Thu 12:00 AM"; a localised template gives
     /// "12.00 AM" in some regions, so the colon is pinned.
+    ///
+    /// Only between the digits. The day period is the locale's own — Spanish
+    /// ones write "p.m." — and checking the whole string for a full stop
+    /// failed on every Mac set to one of them.
     func testAbsoluteTimeUsesAColon() {
         let text = ResetCopy.text(for: now.addingTimeInterval(6 * 60 * 60), now: now)
-        XCTAssertTrue(text.contains(":"), "expected a colon in \(text)")
-        XCTAssertFalse(text.contains("."), "expected no full stop in \(text)")
+        XCTAssertNotNil(text.range(of: #"\d{1,2}:\d{2}"#, options: .regularExpression),
+                        "expected h:mm in \(text)")
+        XCTAssertNil(text.range(of: #"\d\.\d"#, options: .regularExpression),
+                     "expected no full stop between the digits in \(text)")
     }
 
     func testPastResetsReadAsResetting() {
