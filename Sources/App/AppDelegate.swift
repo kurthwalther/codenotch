@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var whatsNew: WhatsNewWindowController?
     /// Held for the life of the app: releasing it stops the scheduled checks.
     private var updater: Updater?
+    /// Held for the life of the app: it owns the power assertion.
+    private var keepAwake: KeepAwake?
     private var statusItem: StatusItemController?
     private var cancellables = Set<AnyCancellable>()
 
@@ -159,6 +161,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .receive(on: RunLoop.main)
                 .sink { [weak controller] ids in controller?.model.refreshing = ids }
                 .store(in: &cancellables)
+
+            // Caffeine, but only while something is actually running: the
+            // moment the last busy session goes idle, the Mac may sleep again.
+            // Fed from the same sessions the rings show, so what the notch says
+            // is working and what holds the Mac awake can never disagree.
+            let keepAwake = KeepAwake()
+            self.keepAwake = keepAwake
+            Publishers.CombineLatest3(
+                preferences.$keepAwakeWhileWorking,
+                preferences.$keepDisplayAwake,
+                controller.model.$sessions
+            )
+            .map { KeepAwake.wanted(enabled: $0, display: $1, sessions: $2) }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { keepAwake.hold($0) }
+            .store(in: &cancellables)
 
             // CODENOTCH_DISCOVER=<url> loads that page in the signed-in WebView
             // and logs the API calls it makes — for finding an undocumented

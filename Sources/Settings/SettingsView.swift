@@ -99,6 +99,20 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                // Caffeine, scoped to the one moment it is wanted. An agent
+                // left to run is the one thing on this Mac that must not be
+                // interrupted by it dozing off — and it is also the one thing
+                // that ends on its own, so the hold ends with it.
+                Toggle("Keep this Mac awake while an agent is working",
+                       isOn: $preferences.keepAwakeWhileWorking)
+                Toggle("Keep the display on as well", isOn: $preferences.keepDisplayAwake)
+                    .disabled(!preferences.keepAwakeWhileWorking)
+                    .padding(.leading, 20)
+                Text(SettingsView.keepAwakeCopy)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Toggle("Install updates automatically", isOn: Binding(
                     get: { updater.automatic },
                     set: { updater.automatic = $0 }
@@ -175,7 +189,18 @@ struct SettingsView: View {
     static let width: CGFloat = 500
     /// Tall enough that Startup and Updates are visible without scrolling —
     /// four account rows push everything below them a long way down.
-    static let height: CGFloat = 560
+    static let height: CGFloat = 640
+
+    /// Says the one thing people will try and find does not work. A power
+    /// assertion is exactly what Caffeine and Amphetamine hold, and it stops
+    /// the Mac dozing off on its own; it does not stop the lid. macOS sleeps a
+    /// closed MacBook regardless, unless it is on power with an external
+    /// display attached, and no app can change that without root.
+    static let keepAwakeCopy =
+        "Held only while a session is busy, and released as soon as every agent "
+        + "is idle or waiting on you. Closing the lid still sleeps a MacBook "
+        + "unless it is plugged in with an external display — macOS does not "
+        + "let an app override that."
 
     /// Nothing to read from anywhere. On a first launch that is the normal
     /// state, and it is the only moment the sheet has something to explain.

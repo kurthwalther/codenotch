@@ -40,6 +40,16 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(lastSeenVersion, forKey: Keys.lastSeenVersion) }
     }
 
+    /// Hold the Mac awake while any agent session is busy — see `KeepAwake`.
+    @Published var keepAwakeWhileWorking: Bool {
+        didSet { defaults.set(keepAwakeWhileWorking, forKey: Keys.keepAwake) }
+    }
+
+    /// While holding it awake, keep the display lit as well.
+    @Published var keepDisplayAwake: Bool {
+        didSet { defaults.set(keepDisplayAwake, forKey: Keys.keepDisplay) }
+    }
+
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != Self.isRegisteredForLogin else { return }
@@ -60,6 +70,8 @@ final class Preferences: ObservableObject {
         static let presence = "appPresence"
         static let edge = "notchEdge"
         static let lastSeenVersion = "lastSeenVersion"
+        static let keepAwake = "keepAwakeWhileWorking"
+        static let keepDisplay = "keepDisplayAwake"
     }
 
     /// True the very first time this copy runs, and never again.
@@ -116,6 +128,12 @@ final class Preferences: ObservableObject {
         // Absent means nothing has been shown yet, which is true of a fresh
         // install — so the current release reads as new to it.
         self.lastSeenVersion = defaults.string(forKey: Keys.lastSeenVersion)
+        // On by default: the point of leaving an agent to run is that it
+        // finishes, and a Mac that dozed off halfway is the one way it cannot.
+        // Absent means never chosen.
+        self.keepAwakeWhileWorking = defaults.object(forKey: Keys.keepAwake) as? Bool ?? true
+        // The display is a separate question — the agent does not need it lit.
+        self.keepDisplayAwake = defaults.bool(forKey: Keys.keepDisplay)
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin
