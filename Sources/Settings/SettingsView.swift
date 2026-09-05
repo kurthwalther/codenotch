@@ -64,6 +64,13 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if preferences.notchVisibility == .auto {
+                    Picker("Auto shows while", selection: $preferences.autoScope) {
+                        ForEach(NotchVisibility.AutoScope.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 // Only meaningful where the notch is held open by the setting.
                 HStack(spacing: 10) {
                     Text("Settles after")

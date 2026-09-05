@@ -7,6 +7,9 @@ import Foundation
 final class Conversation: ObservableObject {
     let session: AgentSession
     @Published private(set) var turns: [TranscriptTurn] = []
+    /// What the session is doing now, kept current by the app so the card
+    /// can say "working…" under the last turn while the answer is written.
+    @Published var state: AgentSession.State
     /// What the reply field holds, and what became of the last send.
     @Published var draft = ""
     @Published var sendState: SendState = .idle
@@ -33,6 +36,7 @@ final class Conversation: ObservableObject {
 
     init(session: AgentSession) {
         self.session = session
+        self.state = session.state
     }
 
     func load() {
@@ -40,12 +44,12 @@ final class Conversation: ObservableObject {
         if fresh != turns { turns = fresh }
     }
 
-    /// Re-read every couple of seconds while open: a turn is appended to the
-    /// transcript as it finishes, and the card should show it then.
+    /// Re-read every second while open: a turn is appended to the transcript
+    /// as each of its parts finishes, and the card should show it then.
     func startFollowing() {
         load()
         guard refresh == nil else { return }
-        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.load() }
         }
         RunLoop.main.add(timer, forMode: .common)

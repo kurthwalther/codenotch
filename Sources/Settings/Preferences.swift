@@ -95,6 +95,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notchPinned, forKey: Keys.notchPinned) }
     }
 
+    /// What Auto counts: any session, or an agent at work.
+    @Published var autoScope: NotchVisibility.AutoScope {
+        didSet { defaults.set(autoScope.rawValue, forKey: Keys.autoScope) }
+    }
+
     /// How long a notch held open is left alone before it settles smaller
     /// and quieter.
     @Published var restAfterSeconds: Double {
@@ -150,6 +155,7 @@ final class Preferences: ObservableObject {
         static let notchPinned = "notchPinned"
         static let notices = "noticesEnabled"
         static let restAfter = "restAfterSeconds"
+        static let autoScope = "autoScope"
         static let noticeSeconds = "noticeSeconds"
     }
 
@@ -233,6 +239,8 @@ final class Preferences: ObservableObject {
         self.hideInFullscreen = defaults.object(forKey: Keys.hideInFullscreen) as? Bool ?? true
         self.notchPinned = defaults.bool(forKey: Keys.notchPinned)
         self.noticesEnabled = defaults.object(forKey: Keys.notices) as? Bool ?? true
+        self.autoScope = defaults.string(forKey: Keys.autoScope)
+            .flatMap(NotchVisibility.AutoScope.init(rawValue:)) ?? .session
         let rest = defaults.object(forKey: Keys.restAfter) as? Double ?? 10
         self.restAfterSeconds = min(max(rest, Self.restAfterRange.lowerBound), Self.restAfterRange.upperBound)
         let seconds = defaults.object(forKey: Keys.noticeSeconds) as? Double ?? 12

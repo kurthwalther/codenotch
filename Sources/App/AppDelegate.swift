@@ -224,7 +224,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.notices = notices
             controller.model.$sessions
                 .receive(on: RunLoop.main)
-                .sink { [weak noticeCenter] in noticeCenter?.observe($0) }
+                .sink { [weak noticeCenter, weak notices] sessions in
+                    noticeCenter?.observe(sessions)
+                    // The open conversation follows its session's state, so
+                    // the card can say the agent is at it.
+                    if let conversation = notices?.conversation,
+                       let live = sessions.values.flatMap({ $0 }).first(where: { $0.id == conversation.session.id }) {
+                        conversation.state = live.state
+                    }
+                }
                 .store(in: &cancellables)
             preferences.$noticesEnabled
                 .sink { [weak noticeCenter] in noticeCenter?.enabled = $0 }
@@ -236,6 +244,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.onPinChanged = { preferences.notchPinned = $0 }
             preferences.$restAfterSeconds
                 .sink { [weak controller] in controller?.restAfter = $0 }
+                .store(in: &cancellables)
+            preferences.$autoScope
+                .receive(on: RunLoop.main)
+                .sink { [weak controller] in controller?.autoScope = $0 }
                 .store(in: &cancellables)
             preferences.$hideInFullscreen
                 .removeDuplicates()

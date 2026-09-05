@@ -87,6 +87,10 @@ struct ConversationView: View {
                         TurnView(turn: turn, providerName: providerName)
                             .id(index)
                     }
+                    if conversation.state == .busy {
+                        WorkingRow(providerName: providerName)
+                            .id(conversation.turns.count)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -94,6 +98,10 @@ struct ConversationView: View {
             .onChange(of: conversation.turns.count, initial: true) { _, count in
                 guard count > 0 else { return }
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(count - 1, anchor: .bottom) }
+            }
+            .onChange(of: conversation.state) { _, state in
+                guard state == .busy else { return }
+                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(conversation.turns.count, anchor: .bottom) }
             }
         }
     }
@@ -156,6 +164,31 @@ struct ConversationView: View {
         case .sent(let at):  return "Sent \(ElapsedCopy.ago(since: at))"
         case .failed(let w): return w
         case .copied:        return "Copied — paste it into the session"
+        }
+    }
+}
+
+/// The agent is writing: three dots that breathe, where its turn will be.
+private struct WorkingRow: View {
+    let providerName: String
+    @State private var on = false
+
+    var body: some View {
+        HStack(spacing: Design.px(12)) {
+            Text(providerName)
+                .font(Typography.cardBody.weight(.semibold))
+                .foregroundStyle(Palette.textPrimary)
+            HStack(spacing: Design.px(6)) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(Palette.textSecondary)
+                        .frame(width: Design.px(9), height: Design.px(9))
+                        .opacity(on ? 1 : 0.25)
+                        .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
+                                    .delay(Double(i) * 0.2), value: on)
+                }
+            }
+            .onAppear { on = true }
         }
     }
 }

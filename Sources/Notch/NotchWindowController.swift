@@ -63,8 +63,12 @@ final class NotchWindowController {
     /// Somewhere else attention may be — the note beside the notch — asked
     /// before settling, so reading or typing there keeps the notch up.
     var attentionElsewhere: () -> Bool = { false }
-    /// The standing visibility, for the mode that decides by itself.
+    /// The standing visibility, for the mode that decides by itself — and
+    /// what that mode counts.
     private var visibility: NotchVisibility = .onHover
+    var autoScope: NotchVisibility.AutoScope = .session {
+        didSet { followSessions(model.sessions) }
+    }
     /// What the menu's ring items refer to, by tag, for as long as it is open.
     private var ringChoices: [(providerID: String, windowID: String)] = []
     private var secondaryChoices: [(providerID: String, windowID: String?)] = []
@@ -213,7 +217,7 @@ final class NotchWindowController {
         var states: [String: AgentSession.State] = [:]
         for session in sessions.values.flatMap({ $0 }) { states[session.id] = session.state }
         defer { statesBefore = states }
-        followSessions(open: !states.isEmpty)
+        followSessions(sessions)
         let changed = states.contains { id, state in
             guard let before = statesBefore[id] else { return state != .idle }
             return before != state
@@ -724,7 +728,8 @@ final class NotchWindowController {
     /// Auto: held open like Always show while any session exists, folded
     /// away like Show on hover when none does — the notch is there for the
     /// agents, and goes when they do.
-    private func followSessions(open: Bool) {
+    private func followSessions(_ sessions: [String: [AgentSession]]) {
+        let open = autoScope.opens(sessions)
         guard visibility == .auto, model.isAlwaysOn != open else { return }
         model.isAlwaysOn = open
         if open {
@@ -749,7 +754,7 @@ final class NotchWindowController {
             panel?.orderFrontRegardless()
             model.isPinned = false
             // Decided by the sessions from here on; start from what they are.
-            model.isAlwaysOn = !model.sessions.values.allSatisfy(\.isEmpty)
+            model.isAlwaysOn = autoScope.opens(model.sessions)
             foldWork?.cancel()
             foldWork = nil
             withAnimation(NotchMotion.unfold) {

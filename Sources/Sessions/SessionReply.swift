@@ -52,6 +52,45 @@ enum SessionReply {
         }
     }
 
+    // MARK: Quick answers
+
+    /// Whether a waiting session can be answered from its card. Only the
+    /// super.engineering road can press a key rather than type a line, and
+    /// a permission prompt wants a key.
+    static func canAnswerQuickly(_ session: AgentSession) -> Bool {
+        guard let locator = session.locator else { return false }
+        if case .superconductor = route(for: locator, processes: LiveProcesses()) { return true }
+        return false
+    }
+
+    /// Approve is the first choice on Claude Code's prompts — "1" picks it;
+    /// deny is Escape, which the app can send as a key on its own. Best
+    /// effort: a prompt laid out differently takes the keys differently.
+    @MainActor
+    static func answer(_ answer: SessionAnswer, to session: AgentSession) async -> Conversation.SendState {
+        guard let locator = session.locator,
+              case .superconductor(let cwd) = route(for: locator, processes: LiveProcesses())
+        else { return .idle }
+        do {
+            let listing = try await run(["agents", "list", "--output", "json", "--worktree", cwd])
+            guard let target = pickTarget(fromAgentsJSON: listing) else {
+                throw ReplyError(errorDescription: "Couldn't tell which agent to answer")
+            }
+            switch answer {
+            case .approve:
+                _ = try await run(["agent", "send", "--to", "id:\(target)", "--prompt", "1",
+                                   "--worktree", cwd, "--output", "json"])
+            case .deny:
+                _ = try await run(["agent", "interrupt", "--to", "id:\(target)", "--signal", "escape",
+                                   "--worktree", cwd, "--output", "json"])
+            }
+            return .sent(Date())
+        } catch {
+            Log.sessions.error("quick answer failed: \(error.localizedDescription, privacy: .public)")
+            return .failed(error.localizedDescription)
+        }
+    }
+
     // MARK: super.engineering
 
     struct ReplyError: LocalizedError {

@@ -88,7 +88,7 @@ enum SessionFocus {
         guard let locator = session.locator,
               let destination = destination(for: locator, processes: LiveProcesses())
         else { return }
-        Log.sessions.info("focus \(session.id, privacy: .public): \(String(describing: destination), privacy: .public)")
+        Log.sessions.notice("focus \(session.id, privacy: .public): \(String(describing: destination), privacy: .public)")
         go(to: destination)
     }
 
@@ -116,21 +116,28 @@ enum SessionFocus {
             let process = Process()
             process.executableURL = sc
             process.arguments = ["worktree", "open", cwd, "--activate"]
-            process.standardOutput = nil
-            process.standardError = nil
+            // Somewhere for its output to go: a closed pipe is a broken one,
+            // and a tool that cannot print its result may give up before it
+            // has done the thing.
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
             do { try process.run() } catch {
                 Log.sessions.error("sc worktree open failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 
+    /// Brought forward through the workspace rather than asked to activate
+    /// itself: from an app that is never active — every panel here is
+    /// non-activating — a direct activation request is one macOS may
+    /// quietly decline, while opening the app again is honoured whether or
+    /// not it is running.
     @MainActor
     private static func activate(_ bundleID: String) {
-        if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
-            running.activate(options: [.activateIgnoringOtherApps])
-        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            NSWorkspace.shared.openApplication(at: url, configuration: .init())
-        }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
     /// Selecting a tab by tty: Terminal and iTerm2 both expose it, in their

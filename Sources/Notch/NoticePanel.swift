@@ -18,7 +18,10 @@ final class NoticePanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        isMovable = false
+        // Dragged by any part of the card that does not take the click
+        // itself — the header, the padding — while a conversation is open.
+        isMovable = true
+        isMovableByWindowBackground = true
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         acceptsMouseMovedEvents = true
@@ -55,7 +58,9 @@ struct NoticeRootView: View {
                 .padding(Design.px(16))
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else {
-                NoticeStackView(center: center, edge: controller.edge) { controller.open($0) }
+                NoticeStackView(center: center, edge: controller.edge,
+                                open: { controller.open($0) },
+                                answer: { controller.answer($0, with: $1) })
             }
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.85), value: controller.conversation?.session.id)
@@ -66,6 +71,9 @@ struct NoticeRootView: View {
 struct NoticeCardView: View {
     let notice: SessionNotice
     let open: () -> Void
+    /// For a session waiting on you: the two answers a card can give
+    /// without opening the conversation. Nil where there is no road.
+    var answer: ((SessionAnswer) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: Design.px(8)) {
@@ -89,6 +97,14 @@ struct NoticeCardView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if notice.kind == .waiting, let answer {
+                HStack(spacing: Design.px(12)) {
+                    quick("Approve", .approve, answer)
+                    quick("Deny", .deny, answer)
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, Design.px(4))
+            }
         }
         .padding(NotchLayout.cardPadding * 0.8)
         .frame(width: NoticeWindowController.width, alignment: .leading)
@@ -99,6 +115,25 @@ struct NoticeCardView: View {
         .contentShape(RoundedRectangle(cornerRadius: NotchLayout.cardCorner * 0.7, style: .continuous))
         .onTapGesture(perform: open)
     }
+
+    private func quick(_ title: String, _ kind: SessionAnswer,
+                       _ answer: @escaping (SessionAnswer) -> Void) -> some View {
+        Button { answer(kind) } label: {
+            Text(title)
+                .font(Typography.cardBody.weight(.medium))
+                .foregroundStyle(Palette.textPrimary)
+                .padding(.horizontal, Design.px(18))
+                .padding(.vertical, Design.px(7))
+                .background(Capsule().fill(kind == .approve ? Palette.ample.opacity(0.28) : Palette.ringTrack))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The two things a waiting agent is usually waiting for.
+enum SessionAnswer {
+    case approve
+    case deny
 }
 
 /// The notices, newest at the bottom, each arriving from the bezel's side.
@@ -106,11 +141,14 @@ struct NoticeStackView: View {
     @ObservedObject var center: SessionNoticeCenter
     let edge: NotchEdge
     let open: (SessionNotice) -> Void
+    var answer: ((SessionNotice, SessionAnswer) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: Design.px(12)) {
             ForEach(center.notices) { notice in
-                NoticeCardView(notice: notice) { open(notice) }
+                NoticeCardView(notice: notice, open: { open(notice) },
+                               answer: SessionReply.canAnswerQuickly(notice.session)
+                                   ? { answer?(notice, $0) } : nil)
                     .transition(
                         .move(edge: arrivesFrom)
                             .combined(with: .opacity)
@@ -165,6 +203,10 @@ final class NoticeWindowController: ObservableObject {
     private var conversationWatch: AnyCancellable?
     private var tick: Timer?
     private var pointerLeftAt: Date?
+    /// Where the card was dragged to, if it was: kept for as long as the
+    /// conversation is open, so a turn arriving does not snap it back.
+    private var draggedTopLeft: CGPoint?
+    private var placing = false
 
     init(center: SessionNoticeCenter) {
         self.center = center
@@ -194,6 +236,7 @@ final class NoticeWindowController: ObservableObject {
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.present() } }
             }
         pointerLeftAt = nil
+        draggedTopLeft = nil
         present()
         panel?.allowsKey = true
         panel?.makeKey()
@@ -203,11 +246,21 @@ final class NoticeWindowController: ObservableObject {
         conversation?.stopFollowing()
         conversationWatch = nil
         conversation = nil
+        draggedTopLeft = nil
         if let panel {
             if panel.isKeyWindow { panel.resignKey() }
             panel.allowsKey = false
         }
         present()
+    }
+
+    /// A quick answer from a "needs you" card: approve or deny, by the same
+    /// road a reply takes. The card goes once the answer is on its way.
+    func answer(_ notice: SessionNotice, with answer: SessionAnswer) {
+        center.dismiss(notice.id)
+        Task { @MainActor in
+            _ = await SessionReply.answer(answer, to: notice.session)
+        }
     }
 
     /// Sends the draft and, when it went, clears it — the transcript will
@@ -245,9 +298,15 @@ final class NoticeWindowController: ObservableObject {
         // Sized to what the content wants, placed beside the notch, centred
         // along the bezel where the notch is.
         let size = hosting?.fittingSize ?? .zero
-        panel.setFrame(Self.frame(size: size, edge: where_.edge, inset: where_.inset,
-                                  screen: screen.frame, usable: screen.visibleFrame),
-                       display: true)
+        var frame = Self.frame(size: size, edge: where_.edge, inset: where_.inset,
+                               screen: screen.frame, usable: screen.visibleFrame)
+        if let topLeft = draggedTopLeft {
+            // Grown or shrunk in place, hanging from where it was left.
+            frame.origin = CGPoint(x: topLeft.x, y: topLeft.y - frame.height)
+        }
+        placing = true
+        panel.setFrame(frame, display: true)
+        placing = false
         panel.orderFrontRegardless()
         startTicking()
     }
@@ -258,6 +317,16 @@ final class NoticeWindowController: ObservableObject {
         panel.contentView = hosting
         self.hosting = hosting
         self.panel = panel
+        // A move that was not ours is a drag: remember the top-left corner,
+        // which is the edge a growing card should hang from.
+        NotificationCenter.default.publisher(for: NSWindow.didMoveNotification, object: panel)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, !self.placing, self.conversation != nil, let frame = self.panel?.frame else { return }
+                    self.draggedTopLeft = CGPoint(x: frame.minX, y: frame.maxY)
+                }
+            }
+            .store(in: &cancellables)
         return panel
     }
 

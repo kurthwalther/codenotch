@@ -18,6 +18,30 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// What Auto counts as reason to be open.
+    enum AutoScope: String, CaseIterable, Identifiable {
+        /// Any session at all, idle or waiting included.
+        case session
+        /// Only while some agent is busy.
+        case working
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .session: return "A session is open"
+            case .working: return "An agent is working"
+            }
+        }
+
+        func opens(_ sessions: [String: [AgentSession]]) -> Bool {
+            switch self {
+            case .session: return sessions.values.contains { !$0.isEmpty }
+            case .working: return sessions.values.contains { $0.contains { $0.state == .busy } }
+            }
+        }
+    }
+
     var title: String {
         switch self {
         case .alwaysShow: return "Always show"

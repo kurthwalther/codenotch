@@ -110,3 +110,49 @@ final class AutoVisibilityTests: XCTestCase {
         XCTAssertEqual(Preferences(defaults: defaults).restAfterSeconds, 60, accuracy: 0.001)
     }
 }
+
+/// What Auto counts, and what a waiting card can answer.
+@MainActor
+final class AutoScopeTests: XCTestCase {
+    private func session(_ state: AgentSession.State) -> AgentSession {
+        AgentSession(id: UUID().uuidString, name: "s", detail: "d", state: state, waitingFor: nil, since: Date())
+    }
+
+    func testBySessionAnySessionOpensTheNotch() {
+        XCTAssertTrue(NotchVisibility.AutoScope.session.opens(["claude": [session(.idle)]]))
+        XCTAssertTrue(NotchVisibility.AutoScope.session.opens(["claude": [session(.waiting)]]))
+        XCTAssertFalse(NotchVisibility.AutoScope.session.opens(["claude": []]))
+        XCTAssertFalse(NotchVisibility.AutoScope.session.opens([:]))
+    }
+
+    func testByWorkOnlyABusyAgentOpensTheNotch() {
+        XCTAssertFalse(NotchVisibility.AutoScope.working.opens(["claude": [session(.idle), session(.waiting)]]))
+        XCTAssertTrue(NotchVisibility.AutoScope.working.opens(["claude": [session(.idle)], "codex": [session(.busy)]]))
+    }
+
+    func testTheScopeIsRemembered() {
+        let name = "auto-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let first = Preferences(defaults: defaults)
+        XCTAssertEqual(first.autoScope, .session)
+        first.autoScope = .working
+        XCTAssertEqual(Preferences(defaults: defaults).autoScope, .working)
+    }
+
+    /// A quick answer needs a road that can press a key; a session with no
+    /// locator, or one only reachable by clipboard, gets no buttons.
+    func testOnlyReachableSessionsGetQuickAnswers() {
+        XCTAssertFalse(SessionReply.canAnswerQuickly(session(.waiting)))
+        var reachable = session(.waiting)
+        reachable.locator = SessionLocator(appBundleID: "com.example.editor")
+        XCTAssertFalse(SessionReply.canAnswerQuickly(reachable))
+    }
+
+    func testTheConversationStartsInTheSessionsState() {
+        let conversation = Conversation(session: session(.busy))
+        XCTAssertEqual(conversation.state, .busy)
+        conversation.state = .idle
+        XCTAssertEqual(conversation.state, .idle)
+    }
+}
