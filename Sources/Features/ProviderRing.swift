@@ -282,10 +282,13 @@ struct ProviderCell: View {
     @ViewBuilder
     private var resetCaption: some View {
         if snapshot.hasReading, let resetsAt = snapshot.headline?.resetsAt {
-            // The time alone: under the window's name and its number, a
-            // time can only mean when it comes back.
-            Text(ResetCopy.short(for: resetsAt, now: now))
-                .font(Typography.barName)
+            // How long is left. When the number above is already counting
+            // down, this line answers the other half instead — the clock
+            // time it lands on — rather than saying the same thing twice.
+            Text(snapshot.cellLabel == .timeToReset
+                 ? ResetCopy.short(for: resetsAt, now: now)
+                 : ResetCopy.countdown(for: resetsAt, now: now))
+                .font(Typography.resetLabel)
                 .foregroundStyle(Palette.textBright)
                 .lineLimit(1)
                 .fixedSize()

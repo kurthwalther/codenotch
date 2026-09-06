@@ -53,6 +53,15 @@ enum ResetCopy {
         return full.hasPrefix("Resets ") ? String(full.dropFirst("Resets ".count)) : full
     }
 
+    /// How long is left, squeezed for the line under a cell's number:
+    /// "2h 10m", "45m", "3d 4h". The question people actually ask of that
+    /// line is "how long until I get it back", and a clock time makes them
+    /// do the subtraction themselves.
+    static func countdown(for resetsAt: Date, now: Date = Date()) -> String {
+        let seconds = resetsAt.timeIntervalSince(now)
+        return seconds > 0 ? ElapsedCopy.compact(seconds) : "now"
+    }
+
     /// Whole days between two instants, counted by calendar day rather than by
     /// dividing seconds — so a clock change cannot shift the answer.
     static func daysApart(from: Date, to: Date, calendar: Calendar = .current) -> Int {

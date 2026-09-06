@@ -65,7 +65,7 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 Toggle("Show window names", isOn: $preferences.showsWindowNames)
-                Toggle("Show the reset time", isOn: $preferences.showsResetTime)
+                Toggle("Show the time to reset", isOn: $preferences.showsResetTime)
                 Text("The small captions on each cell: which window a gauge is, and "
                      + "when the ring's window comes back.")
                     .font(.caption)

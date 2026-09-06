@@ -240,6 +240,21 @@ final class CaptionTests: XCTestCase {
         XCTAssertEqual(ResetCopy.short(for: now.addingTimeInterval(-5), now: now, calendar: calendar), "now")
     }
 
+    func testTheResetLineCountsDownRatherThanNamingAClockTime() {
+        let now = Date(timeIntervalSince1970: 1_757_240_000)
+        XCTAssertEqual(ResetCopy.countdown(for: now.addingTimeInterval(2 * 3600 + 10 * 60), now: now), "2h 10m")
+        XCTAssertEqual(ResetCopy.countdown(for: now.addingTimeInterval(45 * 60), now: now), "45m")
+        XCTAssertEqual(ResetCopy.countdown(for: now.addingTimeInterval(3 * 86400 + 4 * 3600), now: now), "3d 4h")
+        XCTAssertEqual(ResetCopy.countdown(for: now.addingTimeInterval(-5), now: now), "now")
+    }
+
+    func testTheResetLineIsBiggerThanTheNamesAroundIt() {
+        // It grew to the bar's own figure — the size the eye lands on first
+        // after the ring's number.
+        XCTAssertEqual(NotchLayout.resetLineHeight, NotchLayout.secondaryBarLabelHeight, accuracy: 0.001)
+        XCTAssertGreaterThan(NotchLayout.resetLineHeight, NotchLayout.captionLineHeight)
+    }
+
     func testEveryCellCarriesTheTwoCaptionLines() {
         XCTAssertEqual(NotchLayout.captionSpace,
                        NotchLayout.ringCaptionGap + NotchLayout.captionLineHeight + NotchLayout.nameToPercentGap
