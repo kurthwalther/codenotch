@@ -60,6 +60,7 @@ struct NoticeRootView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else {
                 NoticeStackView(center: center, edge: controller.edge,
+                                focus: { controller.focus($0) },
                                 open: { controller.open($0) },
                                 answer: { controller.answer($0, with: $1) })
             }
@@ -71,6 +72,10 @@ struct NoticeRootView: View {
 /// One notice as drawn.
 struct NoticeCardView: View {
     let notice: SessionNotice
+    /// The card itself: where the agent is running, the way a session row in
+    /// the notch's own card behaves.
+    let focus: () -> Void
+    /// The glyph: the conversation, floating beside the notch.
     let open: () -> Void
     /// For a session waiting on you: the two answers a card can give
     /// without opening the conversation. Nil where there is no road.
@@ -91,6 +96,15 @@ struct NoticeCardView: View {
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textSecondary)
                     .lineLimit(1)
+                Button(action: open) {
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                        .font(.system(size: Design.px(20), weight: .regular))
+                        .foregroundStyle(Palette.textSecondary)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, Design.px(6))
+                .help("Open the conversation")
             }
             Text(notice.preview)
                 .font(Typography.cardBody)
@@ -114,7 +128,7 @@ struct NoticeCardView: View {
                 .fill(Palette.card)
         )
         .contentShape(RoundedRectangle(cornerRadius: NotchLayout.cardCorner * 0.7, style: .continuous))
-        .onTapGesture(perform: open)
+        .onTapGesture(perform: focus)
     }
 
     private func quick(_ title: String, _ kind: SessionAnswer,
@@ -141,13 +155,16 @@ enum SessionAnswer {
 struct NoticeStackView: View {
     @ObservedObject var center: SessionNoticeCenter
     let edge: NotchEdge
+    let focus: (SessionNotice) -> Void
     let open: (SessionNotice) -> Void
     var answer: ((SessionNotice, SessionAnswer) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: Design.px(12)) {
             ForEach(center.notices) { notice in
-                NoticeCardView(notice: notice, open: { open(notice) },
+                NoticeCardView(notice: notice,
+                               focus: { focus(notice) },
+                               open: { open(notice) },
                                answer: SessionReply.canAnswerQuickly(notice.session)
                                    ? { answer?(notice, $0) } : nil)
                     .transition(
@@ -221,7 +238,14 @@ final class NoticeWindowController: ObservableObject {
             .store(in: &cancellables)
     }
 
-    /// A click on a notice opens its conversation in place of the notices.
+    /// A click on a notice takes you to the window the agent is running in.
+    /// The card has done its job either way, so it goes.
+    func focus(_ notice: SessionNotice) {
+        center.dismiss(notice.id)
+        SessionFocus.focus(notice.session)
+    }
+
+    /// Its glyph opens the conversation in place of the notices instead.
     func open(_ notice: SessionNotice) {
         center.dismiss(notice.id)
         show(conversation: Conversation(session: notice.session))

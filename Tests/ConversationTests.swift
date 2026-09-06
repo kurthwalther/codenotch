@@ -261,7 +261,7 @@ final class CaptionTests: XCTestCase {
         let spent = NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 20), weight: .semibold)
         let height = ceil(spent.ascender - spent.descender + spent.leading)
         XCTAssertEqual(NotchLayout.resetLineHeight, height, accuracy: 0.001)
-        let plain = NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 16), weight: .regular)
+        let plain = NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 17), weight: .regular)
         XCTAssertGreaterThan(height, ceil(plain.ascender - plain.descender + plain.leading))
     }
 

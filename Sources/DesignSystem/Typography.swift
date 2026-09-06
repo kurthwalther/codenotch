@@ -26,11 +26,11 @@ enum Typography {
         Font.system(size: Design.notchFontSize(capPixels: 12.5), weight: .medium)
     }
 
-    /// The countdown under the number. Cap height 16px, at the weight of the
+    /// The countdown under the number. Cap height 17px, at the weight of the
     /// text around it: the one caption people look for, read at a glance
     /// rather than found.
     static var resetLabel: Font {
-        Font.system(size: Design.notchFontSize(capPixels: 16), weight: .regular)
+        Font.system(size: Design.notchFontSize(capPixels: 17), weight: .regular)
     }
 
     /// The same line once the window is spent. With nothing left above it to
