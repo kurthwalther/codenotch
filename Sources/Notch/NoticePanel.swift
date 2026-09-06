@@ -62,6 +62,8 @@ struct NoticeRootView: View {
                 NoticeStackView(center: center, edge: controller.edge,
                                 focus: { controller.focus($0) },
                                 open: { controller.open($0) },
+                                hovered: controller.hoveredNoticeID,
+                                measured: { controller.cardFrames = $0 },
                                 answer: { controller.answer($0, with: $1) })
             }
         }
@@ -70,8 +72,19 @@ struct NoticeRootView: View {
 }
 
 /// One notice as drawn.
+/// Where each card landed, so the controller can say which one the pointer
+/// is on. SwiftUI measures; the poll below decides.
+struct NoticeCardFrames: PreferenceKey {
+    static var defaultValue: [String: CGRect] { [:] }
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 struct NoticeCardView: View {
     let notice: SessionNotice
+    /// Set while the pointer is on this card.
+    var isHovered: Bool = false
     /// The card itself: where the agent is running, the way a session row in
     /// the notch's own card behaves.
     let focus: () -> Void
@@ -99,7 +112,13 @@ struct NoticeCardView: View {
                 Button(action: open) {
                     Image(systemName: "bubble.left.and.text.bubble.right")
                         .font(.system(size: Design.px(20), weight: .regular))
-                        .foregroundStyle(Palette.textSecondary)
+                        .foregroundStyle(isHovered ? Palette.textPrimary : Palette.textSecondary)
+                        .padding(Design.px(5))
+                        .background(
+                            Circle()
+                                .fill(Palette.ringTrack)
+                                .opacity(isHovered ? 1 : 0)
+                        )
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -128,6 +147,7 @@ struct NoticeCardView: View {
                 .fill(Palette.card)
         )
         .contentShape(RoundedRectangle(cornerRadius: NotchLayout.cardCorner * 0.7, style: .continuous))
+        .animation(.easeOut(duration: 0.12), value: isHovered)
         .onTapGesture(perform: focus)
     }
 
@@ -157,12 +177,17 @@ struct NoticeStackView: View {
     let edge: NotchEdge
     let focus: (SessionNotice) -> Void
     let open: (SessionNotice) -> Void
+    /// The card the pointer is on, from the controller's poll.
+    var hovered: String?
+    /// Where the cards landed, back to the controller.
+    var measured: ([String: CGRect]) -> Void = { _ in }
     var answer: ((SessionNotice, SessionAnswer) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: Design.px(12)) {
             ForEach(center.notices) { notice in
                 NoticeCardView(notice: notice,
+                               isHovered: hovered == notice.id,
                                focus: { focus(notice) },
                                open: { open(notice) },
                                answer: SessionReply.canAnswerQuickly(notice.session)
@@ -171,10 +196,19 @@ struct NoticeStackView: View {
                         .move(edge: arrivesFrom)
                             .combined(with: .opacity)
                     )
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: NoticeCardFrames.self,
+                                                   value: [notice.id: proxy.frame(in: .global)])
+                        }
+                    )
             }
         }
         .padding(NoticeWindowController.margin)
         .animation(.spring(response: 0.38, dampingFraction: 0.82), value: center.notices)
+        .onPreferenceChange(NoticeCardFrames.self) { frames in
+            MainActor.assumeIsolated { measured(frames) }
+        }
     }
 
     /// The side the notch is on, so a card slides out from it.
@@ -207,6 +241,16 @@ final class NoticeWindowController: ObservableObject {
 
     /// The conversation on show, if one is.
     @Published private(set) var conversation: Conversation?
+
+    /// The card the pointer is on. Polled rather than tracked: these panels
+    /// never become the active app's own, and a SwiftUI hover would go quiet
+    /// exactly when the notices matter — while you are working elsewhere.
+    @Published private(set) var hoveredNoticeID: String?
+
+    /// Where SwiftUI put each card, in the hosting view's own space. Not
+    /// published: it is written during layout, and a redraw here would be a
+    /// loop rather than an update.
+    var cardFrames: [String: CGRect] = [:]
 
     /// The pointer is on the cards, or a conversation is open and being
     /// typed into — attention the notch should count as its own, so it does
@@ -353,6 +397,23 @@ final class NoticeWindowController: ObservableObject {
         startTicking()
     }
 
+    /// Which card the pointer is on, from the frames SwiftUI reported.
+    ///
+    /// The pointer arrives in screen coordinates, y growing up from the
+    /// bottom; SwiftUI's frames start at the hosting view's top-left with y
+    /// growing down. The view says which way round it is rather than this
+    /// guessing.
+    private func updateHover(holding: Bool) {
+        guard holding, conversation == nil, let panel, let hosting else {
+            if hoveredNoticeID != nil { hoveredNoticeID = nil }
+            return
+        }
+        var point = hosting.convert(panel.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
+        if !hosting.isFlipped { point.y = hosting.bounds.height - point.y }
+        let found = cardFrames.first { $0.value.contains(point) }?.key
+        if hoveredNoticeID != found { hoveredNoticeID = found }
+    }
+
     private func makePanel() -> NoticePanel {
         let panel = NoticePanel(contentRect: CGRect(x: 0, y: 0, width: Self.width, height: 100))
         let hosting = NoticeHostingView(rootView: NoticeRootView(controller: self, center: center))
@@ -394,11 +455,12 @@ final class NoticeWindowController: ObservableObject {
     /// alone long enough to close on its own.
     private func startTicking() {
         guard tick == nil else { return }
-        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let panel = self.panel else { return }
                 let holding = panel.isVisible && panel.frame.contains(NSEvent.mouseLocation)
                 self.center.expire(after: self.lifetime, holding: holding)
+                self.updateHover(holding: holding)
                 guard self.conversation != nil else { return }
                 if holding || panel.isKeyWindow {
                     self.pointerLeftAt = nil
