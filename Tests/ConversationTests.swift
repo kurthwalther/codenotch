@@ -94,7 +94,10 @@ final class ReplyErrorTests: XCTestCase {
 final class AutoVisibilityTests: XCTestCase {
     func testAutoIsOfferedBetweenAlwaysAndHover() {
         XCTAssertEqual(NotchVisibility.allCases, [.alwaysShow, .auto, .onHover, .hidden])
-        XCTAssertEqual(NotchVisibility.auto.title, "Auto")
+        XCTAssertEqual(NotchVisibility.auto.title, "Smart")
+        // Renamed on screen only: a stored "auto" still resolves, so nobody
+        // who had chosen it is quietly moved to another mode.
+        XCTAssertEqual(NotchVisibility(rawValue: "auto"), .auto)
         XCTAssertEqual(NotchVisibility(rawValue: "auto"), .auto)
     }
 
@@ -249,10 +252,55 @@ final class CaptionTests: XCTestCase {
     }
 
     func testTheResetLineIsBiggerThanTheNamesAroundIt() {
-        // It grew to the bar's own figure — the size the eye lands on first
-        // after the ring's number.
-        XCTAssertEqual(NotchLayout.resetLineHeight, NotchLayout.secondaryBarLabelHeight, accuracy: 0.001)
         XCTAssertGreaterThan(NotchLayout.resetLineHeight, NotchLayout.captionLineHeight)
+    }
+
+    /// The line is drawn at two sizes and its box holds the larger, so a
+    /// window emptying grows the text without moving anything under it.
+    func testTheResetLineBoxHoldsTheSpentSize() {
+        let spent = NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 20), weight: .semibold)
+        let height = ceil(spent.ascender - spent.descender + spent.leading)
+        XCTAssertEqual(NotchLayout.resetLineHeight, height, accuracy: 0.001)
+        let plain = NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 16), weight: .regular)
+        XCTAssertGreaterThan(height, ceil(plain.ascender - plain.descender + plain.leading))
+    }
+
+    /// Always show means the readings are on screen at full size; only Smart
+    /// draws itself in when it is left alone.
+    @MainActor func testOnlySmartSettles() {
+        XCTAssertTrue(NotchWindowController.settles(.auto))
+        XCTAssertFalse(NotchWindowController.settles(.alwaysShow))
+        XCTAssertFalse(NotchWindowController.settles(.onHover))
+        XCTAssertFalse(NotchWindowController.settles(.hidden))
+    }
+
+    /// A window rolling over is worth looking up for, and worth exactly one
+    /// wake: it fires on the crossing and not on every tick after it.
+    func testAResetIsNoticedOnceAsItHappens() {
+        let now = Date(timeIntervalSince1970: 1_757_240_000)
+        var watch = ResetWatch()
+        let soon = now.addingTimeInterval(60)
+        XCTAssertFalse(watch.crossed(now: now, resets: ["claude": soon]),
+                       "watching a reset ahead is not a crossing")
+        let after = now.addingTimeInterval(120)
+        XCTAssertTrue(watch.crossed(now: after, resets: ["claude": soon]),
+                      "the moment it passes, it is")
+        XCTAssertFalse(watch.crossed(now: after.addingTimeInterval(30), resets: ["claude": soon]),
+                       "and it stays passed without firing again")
+        let next = after.addingTimeInterval(3600)
+        XCTAssertFalse(watch.crossed(now: after, resets: ["claude": next]))
+        XCTAssertTrue(watch.crossed(now: next, resets: ["claude": next]),
+                      "the reset after it is watched in its turn")
+    }
+
+    /// A reset already behind us the first time a provider is seen — the app
+    /// launched after one — is not something to announce.
+    func testAResetAlreadyPastAtLaunchIsNotACrossing() {
+        let now = Date(timeIntervalSince1970: 1_757_240_000)
+        var watch = ResetWatch()
+        XCTAssertFalse(watch.crossed(now: now, resets: ["codex": now.addingTimeInterval(-3600)]))
+        XCTAssertFalse(watch.crossed(now: now.addingTimeInterval(60),
+                                     resets: ["codex": now.addingTimeInterval(-3600)]))
     }
 
     func testEveryCellCarriesTheTwoCaptionLines() {
@@ -284,8 +332,10 @@ final class ShadowTests: XCTestCase {
         XCTAssertTrue(m.castsShadow, "a note or conversation beside it counts")
     }
 
-    func testTheSliderReachesElevenTenths() {
-        XCTAssertEqual(Preferences.notchScaleRange.upperBound, 1.1, accuracy: 0.0001)
+    func testTheSliderReachesOneAndAFifth() {
+        XCTAssertEqual(Preferences.notchScaleRange.upperBound, 1.2, accuracy: 0.0001)
+        XCTAssertEqual(Preferences.notchScaleRange.lowerBound, 0.6, accuracy: 0.0001)
+        XCTAssertTrue(Preferences.notchScaleRange.contains(Preferences.defaultNotchScale))
     }
 }
 

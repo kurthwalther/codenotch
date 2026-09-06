@@ -171,10 +171,14 @@ enum NotchLayout {
     /// Name to number: more than the caption gap, so the name reads as a
     /// heading for the number rather than a line of it.
     static var nameToPercentGap: CGFloat { Design.npx(13) }
-    /// The reset line under the number carries the countdown, at the same
-    /// size as the bar's own figure and brighter than the names around it:
-    /// it is the one caption people look for.
-    static var resetLineHeight: CGFloat { secondaryBarLabelHeight }
+    /// The reset line under the number carries the countdown. Its box is
+    /// measured at the *spent* size, which is the larger of the two the line
+    /// is drawn at: a box that grew with the text would change this cell's
+    /// pitch alone, and shuffle every cell under it the moment a window
+    /// emptied.
+    static var resetLineHeight: CGFloat {
+        lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 20), weight: .semibold))
+    }
     static var captionLineHeight: CGFloat {
         lineHeight(NSFont.systemFont(ofSize: Design.notchFontSize(capPixels: 11), weight: .medium))
     }

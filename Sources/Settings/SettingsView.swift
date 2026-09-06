@@ -82,7 +82,7 @@ struct SettingsView: View {
                         .frame(width: 56, alignment: .trailing)
                         .foregroundStyle(.secondary)
                 }
-                .disabled(preferences.notchVisibility == .onHover || preferences.notchVisibility == .hidden)
+                .disabled(preferences.notchVisibility != .auto)
 
                 Toggle("Shadow", isOn: $preferences.notchShadow)
                 Text("A soft shadow under the notch and its card while the pointer is "
@@ -93,13 +93,13 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if preferences.notchVisibility == .auto {
-                    Picker("Auto shows while", selection: $preferences.autoScope) {
+                    Picker("Smart shows while", selection: $preferences.autoScope) {
                         ForEach(NotchVisibility.AutoScope.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
 
-                // Only meaningful where the notch is held open by the setting.
+                // Smart alone settles, so these two are its settings.
                 HStack(spacing: 10) {
                     Text("Settles after")
                     Slider(value: $preferences.restAfterSeconds,
@@ -109,8 +109,8 @@ struct SettingsView: View {
                         .frame(width: 44, alignment: .trailing)
                         .foregroundStyle(.secondary)
                 }
-                .disabled(preferences.notchVisibility == .onHover || preferences.notchVisibility == .hidden)
-                Text("Left alone this long under Always show or Auto, the notch draws "
+                .disabled(preferences.notchVisibility != .auto)
+                Text("Left alone this long under Smart, the notch draws "
                      + "smaller and quieter, and its handles fold away. It wakes as the "
                      + "pointer heads for it, or when an agent starts, finishes or waits. "
                      + "At zero it rests whenever the pointer is not on it.")

@@ -26,10 +26,18 @@ enum Typography {
         Font.system(size: Design.notchFontSize(capPixels: 12.5), weight: .medium)
     }
 
-    /// The countdown under the number. Cap height 17px: the one caption
-    /// people look for, so it is read at a glance rather than found.
+    /// The countdown under the number. Cap height 16px, at the weight of the
+    /// text around it: the one caption people look for, read at a glance
+    /// rather than found.
     static var resetLabel: Font {
-        Font.system(size: Design.notchFontSize(capPixels: 17), weight: .semibold)
+        Font.system(size: Design.notchFontSize(capPixels: 16), weight: .regular)
+    }
+
+    /// The same line once the window is spent. With nothing left above it to
+    /// read, how long until it comes back is the only thing the cell still
+    /// has to say, so it takes the weight the number no longer needs.
+    static var resetLabelSpent: Font {
+        Font.system(size: Design.notchFontSize(capPixels: 20), weight: .semibold)
     }
 
     /// The captions under the numbers — which window, and when it resets.

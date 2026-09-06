@@ -85,6 +85,12 @@ final class NotchWindowController {
     private var mouseMonitors: [Any] = []
     private var clearHoverWork: DispatchWorkItem?
     private var clockTimer: Timer?
+    /// Watches the countdowns for the moment one of them reaches zero.
+    private var resetWatch = ResetWatch()
+    /// What the slider says, before this screen has had its say on it. Nil
+    /// until the setting is applied, so placing the panel does not quietly
+    /// impose a size nobody asked for.
+    private var requestedScale: Double?
     private var cursorTimer: Timer?
 
     /// Hover in is quick; hover out waits, because the pointer has to cross the
@@ -172,8 +178,34 @@ final class NotchWindowController {
     /// The notch's size, from Settings. Everything measured through
     /// `Design.npx` follows, so the panel is re-placed and the views re-read.
     func apply(scale: Double) {
+        requestedScale = scale
+        // Placing the panel is what knows the screen, and so what has the
+        // last word on the size; this stands until it runs.
         Design.notchFactor = CGFloat(scale)
         relayout()
+    }
+
+    /// The largest size no bigger than the one asked for whose panel still
+    /// lands on this screen.
+    ///
+    /// The card already gives up session rows to fit, and past a point it has
+    /// none left to give — a short display and the biggest size the slider
+    /// offers is exactly that point. Rather than let the card hang off the top
+    /// and bottom of the screen, the notch itself comes down a step at a time,
+    /// which is the same solve-for-the-screen the row count does.
+    static func scaleFitting(_ wanted: Double, model: NotchViewModel,
+                             cellCount: Int, step: Double = 0.05) -> Double {
+        guard model.screenSize.height > 0 else { return wanted }
+        let floor = Preferences.notchScaleRange.lowerBound
+        let restore = Design.notchFactor
+        defer { Design.notchFactor = restore }
+        var candidate = wanted
+        while candidate > floor {
+            Design.notchFactor = CGFloat(candidate)
+            if model.panelSize(cellCount: cellCount).height <= model.screenSize.height { break }
+            candidate = max(floor, candidate - step)
+        }
+        return candidate
     }
 
     /// Whether every cell holds room for a second window's bar. Changes the
@@ -215,7 +247,8 @@ final class NotchWindowController {
         // particular at a delay of zero, where "any time at all since the
         // last touch" would otherwise be true the instant after waking.
         let attended = model.isPointerOn || attentionElsewhere()
-        let shouldRest = model.isAlwaysOn && model.isExpanded && !hiddenForFullscreen
+        let shouldRest = Self.settles(visibility) && model.isAlwaysOn && model.isExpanded
+            && !hiddenForFullscreen
             && Self.restIsDue(now: now, lastAttention: lastAttention, holdUntil: holdUntil,
                               restAfter: restAfter, attended: attended)
         guard shouldRest != model.isResting else { return }
@@ -225,6 +258,14 @@ final class NotchWindowController {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { model.isResting = false }
         }
     }
+
+    /// Which modes settle at all.
+    ///
+    /// Smart alone. Pinned open by hand never settled; asked to stay open by
+    /// the setting, it should not either — Always show means the readings are
+    /// on screen at full size, which a notch drawn in and dimmed is not. The
+    /// other two are not held open in the first place.
+    static func settles(_ visibility: NotchVisibility) -> Bool { visibility == .auto }
 
     /// Whether a notch held open should settle: left alone past the delay,
     /// with no pointer or note on it, and not inside a wake's hold.
@@ -286,7 +327,14 @@ final class NotchWindowController {
     func relocate(cellCount: Int? = nil) {
         guard let screen = NotchGeometry.preferredScreen(from: NSScreen.screens) else { return }
         model.adopt(screen: screen)
-        let size = model.panelSize(cellCount: cellCount ?? model.snapshots.count)
+        // Now that the screen is known, the slider's number gets its answer —
+        // and gets it again on every move to another display.
+        let count = cellCount ?? model.snapshots.count
+        if let requested = requestedScale {
+            let fitted = CGFloat(Self.scaleFitting(requested, model: model, cellCount: count))
+            if Design.notchFactor != fitted { Design.notchFactor = fitted }
+        }
+        let size = model.panelSize(cellCount: count)
         let frame = NotchGeometry.panelFrame(for: screen, panelSize: size, edge: model.edge)
         lastVisibleFrame = screen.visibleFrame
 
@@ -866,10 +914,28 @@ final class NotchWindowController {
     private func startClock() {
         // Keeps "Resets in N min" from going stale while the tooltip is open.
         let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.model.now = Date() }
+            MainActor.assumeIsolated { self?.tickClock() }
         }
         RunLoop.main.add(timer, forMode: .common)
         clockTimer = timer
+    }
+
+    /// The clock moving the countdowns on — and, when one of them reaches
+    /// zero, saying so: the notch comes up out of rest and the reading is
+    /// asked for again, so the ring fills back in rather than sitting empty
+    /// until the next poll. Within half a minute of the reset, which is how
+    /// often this runs.
+    private func tickClock() {
+        let now = Date()
+        model.now = now
+        var resets: [String: Date] = [:]
+        for snapshot in model.snapshots {
+            if let at = snapshot.headline?.resetsAt { resets[snapshot.id] = at }
+        }
+        guard resetWatch.crossed(now: now, resets: resets) else { return }
+        Log.usage.debug("a limit window rolled over — waking")
+        wake()
+        onRefresh?()
     }
 
     private func contextMenu() -> NSMenu {

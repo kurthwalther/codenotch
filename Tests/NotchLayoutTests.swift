@@ -821,6 +821,55 @@ final class SessionCapTests: XCTestCase {
         }
     }
 
+    /// And at the biggest the slider now goes to. 120% is a third more notch
+    /// than the default, which is the setting most likely to run a short
+    /// screen out of room.
+    @MainActor func testThePanelFitsEvenAtTheLargestSize() {
+        Design.notchFactor = Preferences.notchScaleRange.upperBound
+        defer { Design.notchFactor = 1 }
+        for height in stride(from: CGFloat(900), through: 2000, by: 23) {
+            let model = NotchViewModel()
+            model.edge = .right
+            model.screenSize = CGSize(width: 1512, height: height)
+            model.screenUsableSize = CGSize(width: 1512, height: height - 37)
+            let fitted = NotchWindowController.scaleFitting(
+                Preferences.notchScaleRange.upperBound, model: model, cellCount: 4)
+            Design.notchFactor = CGFloat(fitted)
+            XCTAssertLessThanOrEqual(
+                model.panelSize(cellCount: 4).height, height,
+                "at 120% the panel runs off a \(height)pt screen"
+            )
+        }
+    }
+
+    /// A screen too short for the size asked for gets the largest that fits
+    /// instead of a card hanging off both ends.
+    @MainActor func testTheLargestSizeComesDownToFitAShortScreen() {
+        let model = NotchViewModel()
+        model.edge = .right
+        model.screenSize = CGSize(width: 1470, height: 956)      // 13-inch Air
+        model.screenUsableSize = CGSize(width: 1470, height: 919)
+        let wanted = Preferences.notchScaleRange.upperBound
+        let got = NotchWindowController.scaleFitting(wanted, model: model, cellCount: 4)
+        XCTAssertLessThan(got, wanted, "120% does not fit a 13-inch Air")
+        XCTAssertGreaterThanOrEqual(got, Preferences.notchScaleRange.lowerBound)
+
+        Design.notchFactor = CGFloat(got)
+        defer { Design.notchFactor = 1 }
+        XCTAssertLessThanOrEqual(model.panelSize(cellCount: 4).height, model.screenSize.height)
+    }
+
+    /// And a screen with the room for it is left alone.
+    @MainActor func testARoomyScreenKeepsTheSizeItWasAskedFor() {
+        let model = NotchViewModel()
+        model.edge = .right
+        model.screenSize = CGSize(width: 1728, height: 1117)     // 16-inch Pro
+        model.screenUsableSize = CGSize(width: 1728, height: 1080)
+        let wanted = Preferences.notchScaleRange.upperBound
+        XCTAssertEqual(NotchWindowController.scaleFitting(wanted, model: model, cellCount: 4),
+                       wanted, accuracy: 0.0001)
+    }
+
     /// A top or bottom notch spends the card's height reaching inward instead,
     /// against the usable screen — it starts below the menu bar, so the menu
     /// bar is room it never had.

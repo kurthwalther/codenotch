@@ -196,6 +196,14 @@ struct ProviderCell: View {
 
     private var secondary: SecondaryReading? { snapshot.secondaryReading }
 
+    /// Nothing left — the band the ring itself goes red at, so the line grows
+    /// exactly when the ring empties rather than on a rule of its own.
+    private var isSpent: Bool {
+        if snapshot.block != nil { return true }
+        guard let used = snapshot.headline?.usedFraction else { return false }
+        return UsageBand.band(for: used, thresholds: thresholds) == .exhausted
+    }
+
     /// A dash, not "0%": nothing read is not the same as nothing used.
     private var percentText: String {
         snapshot.hasReading ? snapshot.cellText(now: now) : "—"
@@ -288,7 +296,7 @@ struct ProviderCell: View {
             Text(snapshot.cellLabel == .timeToReset
                  ? ResetCopy.short(for: resetsAt, now: now)
                  : ResetCopy.countdown(for: resetsAt, now: now))
-                .font(Typography.resetLabel)
+                .font(isSpent ? Typography.resetLabelSpent : Typography.resetLabel)
                 .foregroundStyle(Palette.textBright)
                 .lineLimit(1)
                 .fixedSize()

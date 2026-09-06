@@ -26,6 +26,7 @@ final class ResetPreviewRenderTests: XCTestCase {
             cell("Claude", 0.23, hours: 2.17)
             cell("Codex", 0.52, hours: 0.75)
             cell("Cursor", 0.73, hours: 76)
+            cell("Spent", 1.0, hours: 2.17)
             cell("Fable", 0.16, hours: 2.17, label: .timeToReset)
         }
         .padding(30)
