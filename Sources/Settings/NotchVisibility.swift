@@ -44,6 +44,22 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
         }
     }
 
+    /// A stable number for an NSMenuItem to carry. Tied to the stored value
+    /// rather than to a position in `allCases`, so reordering the cases
+    /// cannot quietly repoint a menu item at another mode.
+    var menuTag: Int {
+        switch self {
+        case .alwaysShow: return 1
+        case .auto:       return 2
+        case .onHover:    return 3
+        case .hidden:     return 4
+        }
+    }
+
+    static func fromMenuTag(_ tag: Int) -> NotchVisibility? {
+        allCases.first { $0.menuTag == tag }
+    }
+
     var title: String {
         switch self {
         case .alwaysShow: return "Always show"

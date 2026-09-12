@@ -265,6 +265,19 @@ final class CaptionTests: XCTestCase {
         XCTAssertGreaterThan(height, ceil(plain.ascender - plain.descender + plain.leading))
     }
 
+    /// The notch's own menu carries the modes, and each item carries a number
+    /// rather than a position — the part that would fail silently if it broke,
+    /// by switching you to a mode you did not pick.
+    func testEveryModeHasItsOwnMenuTag() {
+        let tags = NotchVisibility.allCases.map(\.menuTag)
+        XCTAssertEqual(Set(tags).count, NotchVisibility.allCases.count, "no two modes share a tag")
+        for mode in NotchVisibility.allCases {
+            XCTAssertEqual(NotchVisibility.fromMenuTag(mode.menuTag), mode)
+        }
+        XCTAssertNil(NotchVisibility.fromMenuTag(0))
+        XCTAssertNil(NotchVisibility.fromMenuTag(99))
+    }
+
     /// Always show means the readings are on screen at full size; only Smart
     /// draws itself in when it is left alone.
     @MainActor func testOnlySmartSettles() {

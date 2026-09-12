@@ -23,6 +23,8 @@ final class NotchWindowController {
     var onRefreshProvider: ((String) -> Void)?
     /// Open the settings window, asked for by clicking the handle.
     var onOpenSettings: (() -> Void)?
+    /// A mode picked from the notch's own menu, for Settings to store.
+    var onChooseVisibility: ((NotchVisibility) -> Void)?
     /// Switch keep-awake on or off, asked for by clicking the other handle.
     var onToggleKeepAwake: (() -> Void)?
     /// Point a provider's ring at one of its windows, chosen from the menu.
@@ -958,9 +960,28 @@ final class NotchWindowController {
         keepOpen.state = model.staysOpen ? .on : .off
         keepOpen.isEnabled = !model.isAlwaysOn
         keepOpen.toolTip = model.isAlwaysOn
-            ? "Codenotch is set to Always show. Change it in Settings."
+            ? "Codenotch is set to Always show. Change it under Show."
             : nil
         menu.addItem(keepOpen)
+
+        // The visibility setting itself, switchable from here rather than only
+        // from Settings — it is the one setting worth changing mid-thought.
+        let showMenu = NSMenu()
+        for mode in NotchVisibility.allCases {
+            let item = NSMenuItem(title: mode.title,
+                                  action: #selector(MenuActions.chooseVisibility(_:)),
+                                  keyEquivalent: "")
+            item.target = menuActions
+            item.tag = mode.menuTag
+            item.isEnabled = true
+            item.state = mode == visibility ? .on : .off
+            item.toolTip = mode.explanation
+            showMenu.addItem(item)
+        }
+        let show = NSMenuItem(title: "Show", action: nil, keyEquivalent: "")
+        show.isEnabled = true
+        show.submenu = showMenu
+        menu.addItem(show)
         menu.addItem(.separator())
 
         // Which window each ring draws, for the providers that meter more than
@@ -1067,6 +1088,14 @@ final class NotchWindowController {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let settings = NSMenuItem(
+            title: "Settings…",
+            action: #selector(MenuActions.openSettings(_:)),
+            keyEquivalent: ","
+        )
+        settings.target = menuActions
+        settings.isEnabled = true
+        menu.addItem(settings)
         menu.addItem(
             withTitle: "Quit Codenotch",
             action: #selector(NSApplication.terminate(_:)),
@@ -1090,7 +1119,12 @@ final class NotchWindowController {
         chooseLabel: { [weak self] index in
             guard let self, let choice = self.labelChoices[safe: index] else { return }
             self.onChooseLabel?(choice.providerID, choice.label)
-        }
+        },
+        chooseVisibility: { [weak self] tag in
+            guard let mode = NotchVisibility.fromMenuTag(tag) else { return }
+            self?.onChooseVisibility?(mode)
+        },
+        openSettings: { [weak self] in self?.onOpenSettings?() }
     )
 }
 
@@ -1104,6 +1138,8 @@ final class MenuActions: NSObject {
     private let chooseRing: (Int) -> Void
     private let chooseSecondary: (Int) -> Void
     private let chooseLabel: (Int) -> Void
+    private let chooseVisibility: (Int) -> Void
+    private let openSettings: () -> Void
 
     init(
         refresh: @escaping () -> Void,
@@ -1111,7 +1147,9 @@ final class MenuActions: NSObject {
         togglePinned: @escaping () -> Void,
         chooseRing: @escaping (Int) -> Void,
         chooseSecondary: @escaping (Int) -> Void,
-        chooseLabel: @escaping (Int) -> Void
+        chooseLabel: @escaping (Int) -> Void,
+        chooseVisibility: @escaping (Int) -> Void,
+        openSettings: @escaping () -> Void
     ) {
         self.refresh = refresh
         self.signIn = signIn
@@ -1119,6 +1157,15 @@ final class MenuActions: NSObject {
         self.chooseRing = chooseRing
         self.chooseSecondary = chooseSecondary
         self.chooseLabel = chooseLabel
+        self.chooseVisibility = chooseVisibility
+        self.openSettings = openSettings
+    }
+
+    @objc func openSettings(_ sender: Any?) { openSettings() }
+
+    @objc func chooseVisibility(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem else { return }
+        chooseVisibility(item.tag)
     }
 
     @objc func refreshNow(_ sender: Any?) { refresh() }

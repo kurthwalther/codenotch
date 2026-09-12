@@ -97,6 +97,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 retry: { [weak store] in store?.reauthorize(providerID: $0) }
             )
             controller.onOpenSettings = { [weak settings] in settings?.show() }
+            // Picked from the notch's own menu; stored like any other change
+            // to the setting, so Settings and the menu never disagree.
+            controller.onChooseVisibility = { [weak preferences] mode in
+                preferences?.notchVisibility = mode
+            }
             self.settings = settings
 
             // What changed, once per version — including on a fresh install,
