@@ -15,8 +15,10 @@ struct AgentSession: Identifiable, Equatable {
     }
 
     let id: String
-    /// What to call it in the tooltip.
-    let name: String
+    /// What to call it in the tooltip. A monitor may replace the tool's own
+    /// name with the title of the window the session is running in, when that
+    /// one says more — see `SuperconductorTitles`.
+    var name: String
     /// The quieter second line — where it is running, or what it is doing.
     let detail: String
     let state: State

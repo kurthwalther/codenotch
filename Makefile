@@ -1,4 +1,7 @@
-export DEVELOPER_DIR := /Applications/Xcode.app/Contents/Developer
+# Overridable, because an Xcode that is not in /Applications — a beta kept in
+# ~/Downloads, say — otherwise fails every target with "requires Xcode, but the
+# active developer directory is a command line tools instance".
+export DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 
 PROJECT := Codenotch.xcodeproj
 SCHEME  := Codenotch

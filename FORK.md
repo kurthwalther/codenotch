@@ -33,6 +33,14 @@ and the keychain permission has to be granted there too.
 `Scripts/install-local.sh --test` runs the unit tests; `--build` builds
 without installing.
 
+If Xcode is not in `/Applications` — a beta kept in `~/Downloads`, say — point
+the build at it, or every command stops at "requires Xcode, but the active
+developer directory is a command line tools instance". The Command Line Tools
+alone cannot build this: since the macOS 27 SDK, SwiftUI's `@State` is a macro,
+and the plugin that expands it ships with Xcode.
+
+    export DEVELOPER_DIR=~/Downloads/Xcode-beta.app/Contents/Developer
+
 ## Keeping up with the author
 
 Sparkle's automatic updates are switched off in this fork on purpose: the

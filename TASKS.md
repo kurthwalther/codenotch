@@ -361,11 +361,36 @@ Cursor both feed it, through one display model.
       it has been in that state
 - [x] Claude Code sessions belong to the Claude cell only; other providers get no
       activity rather than a borrowed one
+- [x] `SuperconductorTitles` — a session running in super.engineering is listed
+      under the title on its tab, not the name Claude Code derived. See "Where a
+      session's name comes from" below
 - [x] Tests: status and `tempo` mapping, `procStart` timezone, pid-reuse guard
       inputs, summary precedence, label widths, elapsed copy
 - [ ] Notify on `waiting` (deliberately not built — colour and pulse only, per the
       design call. The hook is `ActivitySummary.waitingSessions`)
 - [ ] Click a session to focus its terminal window
+
+### Where a session's name comes from
+
+Claude Code names a session after its folder plus two random characters —
+`developer-db` — which says where it runs and nothing about what it is doing.
+Four sessions in four agent folders come out as four near-identical words, and
+the list stops being readable. super.engineering already titles the same
+conversation from its contents and puts that on the tab, so the notch reads
+`~/.superconductor/session.json` and lists the session under the title the
+person is already looking at: "Queja Por Demora" over `developer-db`. The join
+is on Claude Code's own `sessionId`, which both files carry.
+
+Two deliberate limits. A tab that has not been titled yet is called after the
+tool running in it — "Claude Code" — which in a list of Claude sessions names
+nothing at all, so those keep the folder name; the words to ignore are read out
+of that app's own settings rather than hardcoded. And the file is re-read on the
+existing five-second rescan rather than watched: `~/.superconductor` is written
+to constantly for reasons that have nothing to do with titles, and a title is
+set once, seconds into a conversation.
+
+Only Claude carries a session id as far as `SessionLocator`, so Cursor and Codex
+sessions keep their own names.
 
 ### Why it is inside the ring
 

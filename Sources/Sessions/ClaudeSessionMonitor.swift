@@ -16,6 +16,9 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
 
     private let directory: URL
     private let livenessInterval: TimeInterval
+    /// The names super.engineering gives its tabs, when it is the thing running
+    /// these sessions. Empty on a Mac without it.
+    private let titles: SuperconductorTitleSource
 
     private var source: DispatchSourceFileSystemObject?
     private var descriptor: CInt = -1
@@ -26,10 +29,12 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
     init(
         directory: URL = URL(fileURLWithPath: NSHomeDirectory())
             .appendingPathComponent(".claude/sessions"),
-        livenessInterval: TimeInterval = 5
+        livenessInterval: TimeInterval = 5,
+        titles: SuperconductorTitleSource = SuperconductorTitleSource()
     ) {
         self.directory = directory
         self.livenessInterval = livenessInterval
+        self.titles = titles
     }
 
     func start() {
@@ -81,12 +86,13 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
     }
 
     private func rescan() {
-        let found = Self.read(directory: directory)
+        let found = Self.read(directory: directory, titles: titles.current())
         guard found != sessions else { return }   // don't churn SwiftUI for nothing
         sessions = found
     }
 
-    static func read(directory: URL) -> [AgentSession] {
+    static func read(directory: URL,
+                     titles: SuperconductorTitles = SuperconductorTitles()) -> [AgentSession] {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
         return names
             .filter { $0.hasSuffix(".json") }
@@ -97,7 +103,13 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
                       let record = ClaudeSessionRecord(json: json),
                       ProcessLiveness.isAlive(pid: record.pid, startedAt: record.startedAt)
                 else { return nil }
-                return record.session
+                var session = record.session
+                // The tab's own title, when the session is running in one:
+                // "Queja Por Demora" rather than "developer-db".
+                if let title = titles.title(for: session.locator?.transcriptID) {
+                    session.name = title
+                }
+                return session
             }
             .sorted { $0.since > $1.since }
     }
