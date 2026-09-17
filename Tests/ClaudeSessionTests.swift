@@ -24,6 +24,18 @@ final class ClaudeSessionRecordTests: XCTestCase {
         XCTAssertEqual(s.detail, "Terminal · usage-notch")
     }
 
+    /// Burbuja runs Claude Code as its engine. That is not a session to list;
+    /// working on Burbuja's repo is, whatever the session is called.
+    func testAnAppsEmbeddedEngineIsNotASession() {
+        XCTAssertNil(record("""
+        { "pid": 89007, "cwd": "/Users/k/Library/Application Support/Burbuja/engine",
+          "kind": "interactive", "entrypoint": "sdk-cli", "name": "Burbuja", "status": "idle" }
+        """))
+        XCTAssertNotNil(record("""
+        { "pid": 1, "cwd": "/Users/k/Documents/GitHub/burbuja", "name": "Burbuja", "status": "idle" }
+        """))
+    }
+
     func testWaitingCarriesWhatItIsWaitingFor() throws {
         let s = try XCTUnwrap(session("""
         { "pid": 1, "cwd": "/tmp/x", "status": "waiting", "waitingFor": "permission" }

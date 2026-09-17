@@ -16,7 +16,8 @@ struct ClaudeSessionRecord {
     /// session we could have shown.
     init?(json: [String: Any]) {
         guard let pid = (json["pid"] as? NSNumber)?.int32Value,
-              let cwd = json["cwd"] as? String else { return nil }
+              let cwd = json["cwd"] as? String,
+              !Self.isEmbedded(cwd: cwd) else { return nil }
 
         let raw = json["status"] as? String
         let tempo = json["tempo"] as? String        // the normalised form, when present
@@ -49,6 +50,19 @@ struct ClaudeSessionRecord {
                                     entrypoint: json["entrypoint"] as? String,
                                     transcriptID: json["sessionId"] as? String)
         )
+    }
+
+    /// Apps that run Claude Code as their engine leave a record here like any
+    /// terminal would, but nobody is sitting at those sessions, and one that
+    /// answers every few seconds would crowd out the ones that matter. They are
+    /// told apart by where they run — the app's own Application Support folder —
+    /// and not by name: someone working *on* such an app has a session of the
+    /// same name, and that one must still show.
+    static let embeddedWorkingDirectories = ["/Library/Application Support/Burbuja/"]
+
+    static func isEmbedded(cwd: String) -> Bool {
+        let path = cwd.hasSuffix("/") ? cwd : cwd + "/"
+        return embeddedWorkingDirectories.contains { path.contains($0) }
     }
 
     static func surface(_ entrypoint: String?) -> String {
