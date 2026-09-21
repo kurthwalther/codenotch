@@ -579,6 +579,16 @@ final class NotchWindowController {
         }) {
             mouseMonitors.append(local)
         }
+
+        // Global only: a click on the notch or its card is the panel's to
+        // handle, and a click in the note beside it or in Settings is still
+        // attention on Codenotch, not a click away from it.
+        let clicks: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        if let away = NSEvent.addGlobalMonitorForEvents(matching: clicks, handler: { [weak self] _ in
+            MainActor.assumeIsolated { self?.clickedElsewhere() }
+        }) {
+            mouseMonitors.append(away)
+        }
     }
 
     private func localCursor(in frame: CGRect) -> CGPoint {
@@ -600,7 +610,11 @@ final class NotchWindowController {
         let overTooltip = model.hoveredIndex
             .flatMap(tooltipRect(index:))
             .map { model.isExpanded && $0.contains(local) } ?? false
-        setExpanded(liveRect.contains(local) || overTooltip)
+        // Under Show on click the pointer only reads the notch; opening and
+        // folding are the clicks' to decide.
+        if visibility != .onClick {
+            setExpanded(liveRect.contains(local) || overTooltip)
+        }
         // On the notch, its handles or its card counts as attention — judged
         // against the full-size regions, so a resting notch wakes as the
         // pointer heads for it rather than once it has arrived.
@@ -632,8 +646,11 @@ final class NotchWindowController {
         if model.hoveredSessionID != overSession?.id {
             model.hoveredSessionID = overSession?.id
         }
+        let onClickablePill = visibility == .onClick && !hiddenForFullscreen
+            && pillRect.contains(local)
         setPointing(
-            Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target)
+            Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target,
+                                   onClickablePill: onClickablePill)
                 || overHandle || overAwake || overSession != nil
         )
 
@@ -692,9 +709,57 @@ final class NotchWindowController {
         DispatchQueue.main.asyncAfter(deadline: .now() + foldGrace, execute: work)
     }
 
-    /// The rings are buttons, so they should say so.
-    static func wantsPointingHand(isExpanded: Bool, cellIndex: Int?) -> Bool {
-        isExpanded && cellIndex != nil
+    /// The rings are buttons, so they should say so — and so is the folded
+    /// pill under Show on click, where a click is the only way in.
+    static func wantsPointingHand(isExpanded: Bool, cellIndex: Int?,
+                                  onClickablePill: Bool = false) -> Bool {
+        isExpanded ? cellIndex != nil : onClickablePill
+    }
+
+    /// Show on click: the pill was clicked. Opens with the same unfold
+    /// reaching it does under hover, without pinning — a click elsewhere
+    /// should still fold it.
+    private func openByClick() {
+        foldWork?.cancel()
+        foldWork = nil
+        withAnimation(NotchMotion.unfold) { model.isExpanded = true }
+        // The pointer is already on the notch it just became; read it now
+        // rather than on the next move, so the cell under it lights at once.
+        cursorMoved()
+    }
+
+    /// Folds at once — the fold the pointer leaving sets off under hover,
+    /// without the grace, since a click has no way back to wait for. Lets go
+    /// of a pin too: whatever held it open, this was the request to close.
+    private func foldByClick() {
+        foldWork?.cancel()
+        foldWork = nil
+        if model.isPinned {
+            model.isPinned = false
+            onPinChanged?(false)
+        }
+        withAnimation(NotchMotion.unfold) {
+            model.isExpanded = false
+            model.hoveredIndex = nil
+        }
+        setPointing(false)
+        updateInteractiveRects()
+    }
+
+    /// A click that reached another app. Under Show on click it folds the
+    /// notch, the way a menu closes when you click away from it — unless the
+    /// notch was kept open from its menu, which is exactly what that asks.
+    func clickedElsewhere() {
+        guard visibility == .onClick, model.isExpanded, !model.staysOpen else { return }
+        // The panel ignores events until the pointer is over it, and a click
+        // can outrun the move that would have switched them on. Such a click
+        // is on the notch, not away from it.
+        if let panel {
+            let local = localCursor(in: panel.frame)
+            let onCard = model.hoveredIndex.flatMap(tooltipRect(index:))?.contains(local) ?? false
+            if liveRect.contains(local) || onCard { return }
+        }
+        foldByClick()
     }
 
     /// Pushed and popped rather than `set`, so leaving restores whatever cursor
@@ -714,7 +779,9 @@ final class NotchWindowController {
     /// open notch pins it. The ring is the more specific target, so it wins.
     func handleClick() {
         lastAttention = Date()
-        guard let panel, model.isExpanded else { return togglePinned() }
+        guard let panel, model.isExpanded else {
+            return visibility == .onClick ? openByClick() : togglePinned()
+        }
         let local = localCursor(in: panel.frame)
 
         // The handle sits inside the notch, so it has to be tested before the
@@ -740,6 +807,14 @@ final class NotchWindowController {
            let index = cellIndex(along: placement.along(of: local)),
            model.snapshots.indices.contains(index) {
             onRefreshProvider?(model.snapshots[index].id)
+            return
+        }
+        // Under Show on click the notch is its own switch: clicked where it
+        // is not a button, it closes. A pin here would be a trap — held open
+        // with nothing on screen to say why a click away no longer folds it.
+        // The card is left out: blank space on it is still reading.
+        if visibility == .onClick {
+            if notchRect.contains(local) { foldByClick() }
             return
         }
         togglePinned()
@@ -857,7 +932,7 @@ final class NotchWindowController {
             foldWork?.cancel()
             foldWork = nil
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
-        case .onHover:
+        case .onHover, .onClick:
             panel?.orderFrontRegardless()
             model.isAlwaysOn = false
             // The first time through, the pin is whatever it was when the app

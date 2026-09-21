@@ -15,6 +15,10 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
     case auto
     /// A pill at the edge that unfolds when the pointer reaches it. The default.
     case onHover
+    /// The same pill, but it waits to be clicked, and stays open until a
+    /// click lands somewhere else — for a pointer that crosses the screen
+    /// edge on its way to something else and should not set it off.
+    case onClick
     /// Nothing on screen at all.
     case hidden
 
@@ -53,6 +57,7 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
         case .auto:       return 2
         case .onHover:    return 3
         case .hidden:     return 4
+        case .onClick:    return 5
         }
     }
 
@@ -65,6 +70,7 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
         case .alwaysShow: return "Always show"
         case .auto:       return "Smart"
         case .onHover:    return "Show on hover"
+        case .onClick:    return "Show on click"
         case .hidden:     return "Hide"
         }
     }
@@ -81,6 +87,9 @@ enum NotchVisibility: String, CaseIterable, Identifiable {
                  + "in and dims."
         case .onHover:
             return "A small pill at the screen edge that opens when you reach it."
+        case .onClick:
+            return "A small pill at the screen edge that opens when you click "
+                 + "it, and folds away when you click anywhere else."
         case .hidden:
             // Said here because a hidden notch is also a hidden way back in.
             return "Nothing on screen. Open Codenotch again from Applications "

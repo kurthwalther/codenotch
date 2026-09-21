@@ -343,6 +343,15 @@ final class PointerStateTests: XCTestCase {
         XCTAssertFalse(NotchWindowController.wantsPointingHand(isExpanded: false, cellIndex: 0))
         XCTAssertFalse(NotchWindowController.wantsPointingHand(isExpanded: false, cellIndex: nil))
     }
+
+    /// Unless clicking it is the only way in, which is Show on click.
+    func testThePillIsAButtonUnderShowOnClick() {
+        XCTAssertTrue(NotchWindowController.wantsPointingHand(isExpanded: false, cellIndex: nil,
+                                                              onClickablePill: true))
+        // Open, the pill is gone and the cells decide again.
+        XCTAssertFalse(NotchWindowController.wantsPointingHand(isExpanded: true, cellIndex: nil,
+                                                               onClickablePill: true))
+    }
 }
 
 /// The settings orb sits in the corner the notch's bottom flare makes, and its
@@ -626,7 +635,7 @@ final class NotchVisibilityTests: XCTestCase {
     }
 
     func testEveryModeIsOfferedAndNamed() {
-        XCTAssertEqual(NotchVisibility.allCases.count, 4)
+        XCTAssertEqual(NotchVisibility.allCases.count, 5)
         for mode in NotchVisibility.allCases {
             XCTAssertFalse(mode.title.isEmpty)
             XCTAssertFalse(mode.explanation.isEmpty)

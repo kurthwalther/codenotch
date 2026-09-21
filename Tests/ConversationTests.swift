@@ -93,7 +93,7 @@ final class ReplyErrorTests: XCTestCase {
 @MainActor
 final class AutoVisibilityTests: XCTestCase {
     func testAutoIsOfferedBetweenAlwaysAndHover() {
-        XCTAssertEqual(NotchVisibility.allCases, [.alwaysShow, .auto, .onHover, .hidden])
+        XCTAssertEqual(NotchVisibility.allCases, [.alwaysShow, .auto, .onHover, .onClick, .hidden])
         XCTAssertEqual(NotchVisibility.auto.title, "Smart")
         // Renamed on screen only: a stored "auto" still resolves, so nobody
         // who had chosen it is quietly moved to another mode.
@@ -284,6 +284,7 @@ final class CaptionTests: XCTestCase {
         XCTAssertTrue(NotchWindowController.settles(.auto))
         XCTAssertFalse(NotchWindowController.settles(.alwaysShow))
         XCTAssertFalse(NotchWindowController.settles(.onHover))
+        XCTAssertFalse(NotchWindowController.settles(.onClick))
         XCTAssertFalse(NotchWindowController.settles(.hidden))
     }
 

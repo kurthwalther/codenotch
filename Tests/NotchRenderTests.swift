@@ -394,3 +394,60 @@ final class AlwaysShowTests: XCTestCase {
         XCTAssertTrue(controller.model.staysOpen)
     }
 }
+
+/// Show on click: the pill waits for a click, and a click anywhere else
+/// folds it the way a menu closes.
+@MainActor
+final class ShowOnClickTests: XCTestCase {
+    func testItStartsFolded() {
+        let controller = NotchWindowController()
+        controller.apply(.onClick)
+        XCTAssertFalse(controller.model.isExpanded)
+    }
+
+    /// Open, but not pinned — a pin would make the next click away do nothing.
+    func testClickingThePillOpensItWithoutAPin() {
+        let controller = NotchWindowController()
+        controller.apply(.onClick)
+        controller.handleClick()
+        XCTAssertTrue(controller.model.isExpanded, "the click did not open it")
+        XCTAssertFalse(controller.model.staysOpen, "opening it pinned it")
+    }
+
+    func testAClickElsewhereFoldsIt() {
+        let controller = NotchWindowController()
+        controller.apply(.onClick)
+        controller.handleClick()
+        controller.clickedElsewhere()
+        XCTAssertFalse(controller.model.isExpanded, "a click away left it open")
+    }
+
+    /// "Keep open" from its menu means exactly that: clicks away are ignored.
+    func testKeepOpenOutlastsAClickElsewhere() {
+        let controller = NotchWindowController()
+        controller.apply(.onClick)
+        controller.togglePinned()
+        controller.clickedElsewhere()
+        XCTAssertTrue(controller.model.isExpanded)
+    }
+
+    /// The other modes have their own ways of folding; a click in another app
+    /// is not one of them.
+    func testOtherModesIgnoreAClickElsewhere() {
+        let controller = NotchWindowController()
+        controller.apply(.onHover)
+        controller.model.isExpanded = true   // reached by the pointer
+        controller.clickedElsewhere()
+        XCTAssertTrue(controller.model.isExpanded)
+
+        controller.apply(.alwaysShow)
+        controller.clickedElsewhere()
+        XCTAssertTrue(controller.model.isExpanded)
+    }
+
+    /// The stored value is what Settings writes; renaming it would quietly
+    /// move anyone who chose it back to hover.
+    func testTheChoiceIsStoredUnderItsOwnName() {
+        XCTAssertEqual(NotchVisibility(rawValue: "onClick"), .onClick)
+    }
+}
