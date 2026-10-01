@@ -29,12 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Set here, not in the Info.plist: this call is applied at launch and
-        // overrides `LSUIElement` either way. Removing the plist key alone left
-        // the app registered as a UIElement with no Dock tile, which looked
-        // exactly like the icon having failed to install. The user's choice
-        // replaces this a moment later, once preferences exist.
-        NSApp.setActivationPolicy(.regular)
+        // No policy is set here. The plist declares `LSUIElement`, so a launch
+        // puts nothing in the Dock on its own, and the `appPresence` sink below
+        // turns the tile on for whoever chose the Dock. Starting as `.regular`
+        // and stepping down once preferences existed put a tile in the Dock on
+        // every launch, even for someone who had chosen to have none.
         guard !isRunningTests else { return }
 
         let controller = NotchWindowController()

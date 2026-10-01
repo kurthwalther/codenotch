@@ -50,10 +50,10 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        # Deliberately a normal Dock app, not an `LSUIElement` agent. The
-        # notch is ambient, but the *app* still has to be findable: without a
-        # Dock tile there is nothing to click to open it, nothing in Cmd-Tab,
-        # and no obvious way to reach settings or quit.
+        # An `LSUIElement` agent at launch, so nothing reaches the Dock before
+        # the user's choice is known. The Dock tile is still the default:
+        # `AppDelegate` sets `.regular` for anyone on `AppPresence.dock`.
+        LSUIElement: true
         CFBundleName: Codenotch
         CFBundleDisplayName: Codenotch
         LSMinimumSystemVersion: "26.0"

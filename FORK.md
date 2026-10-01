@@ -21,14 +21,14 @@ the commit log for the lot.
    It builds a Release configuration signed with that certificate — or ad
    hoc, if there is none — and puts it in `/Applications`, moving any copy
    already there to the Trash.
-4. In the app: Settings › General › *Open Codenotch at login*. When macOS
-   asks about Claude Code's keychain item, choose **Always Allow**.
+4. In the app: Settings › General › *Open Codenotch at login*. Claude
+   Code's keychain item is read through `/usr/bin/security`, so macOS does
+   not ask about it.
 5. Replying to sessions from the card needs super.engineering with
    *Settings › Experimental › Agent orchestration* on.
 
 Copying the built `.app` to another Mac also works, but that Mac will ask
-you to allow it under System Settings › Privacy & Security the first time,
-and the keychain permission has to be granted there too.
+you to allow it under System Settings › Privacy & Security the first time.
 
 `Scripts/install-local.sh --test` runs the unit tests; `--build` builds
 without installing.

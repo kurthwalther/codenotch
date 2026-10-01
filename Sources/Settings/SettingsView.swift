@@ -364,10 +364,13 @@ struct SettingsView: View {
     /// unless it was expected — and choosing Allow instead of Always Allow makes
     /// it return on every read, which is what "it asks every time" turns out to
     /// be.
+    ///
+    /// Claude Code's login is left out: it is read through `security`, which
+    /// never prompts (see `KeychainItem.readViaSecurityTool`).
     static let keychainCopy =
-        "macOS will ask once for permission to read Claude Code's and "
-        + "Antigravity's saved logins. Choose Always Allow — plain Allow makes "
-        + "it ask again every time."
+        "macOS will ask once for permission to read Antigravity's saved "
+        + "login. Choose Always Allow — plain Allow makes it ask again every "
+        + "time."
 
     private var setupNote: some View {
         HStack(alignment: .top, spacing: 10) {

@@ -38,23 +38,15 @@ struct ClaudeCredentials {
     }
 
     private static func read() throws -> ClaudeCredentials {
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching([
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecReturnData: true,
-            kSecMatchLimit: kSecMatchLimitOne
-        ] as CFDictionary, &item)
-
-        guard status == errSecSuccess, let data = item as? Data else {
-            // The status matters: "not found" means Claude Code has never signed
-            // in, whereas -25308 (interaction not allowed) or -128 (user
-            // cancelled) mean the item is there but this app is not on its
-            // access list. Those need very different advice, so record which.
-            Log.usage.error("keychain read failed: OSStatus \(status) (\(Self.explain(status), privacy: .public))")
-            throw Self.wasRefused(status)
-                ? UsageProviderError.accessDenied
-                : UsageProviderError.needsAuth
+        let data: Data
+        switch KeychainItem.readViaSecurityTool(service: service) {
+        case .data(let bytes):
+            data = bytes
+        case .notFound:
+            throw UsageProviderError.needsAuth
+        case .failed(let status):
+            Log.usage.error("security tool read failed: exit \(status); asking the keychain directly")
+            data = try readThroughAPI()
         }
 
         struct Payload: Decodable {
@@ -77,6 +69,30 @@ struct ClaudeCredentials {
             expiresAt: Date(timeIntervalSince1970: payload.claudeAiOauth.expiresAt / 1000),
             subscriptionType: payload.claudeAiOauth.subscriptionType
         )
+    }
+
+    /// The direct read, for when `security` could not answer. Unlike the tool,
+    /// this one can raise macOS's dialogue.
+    private static func readThroughAPI() throws -> Data {
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching([
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecReturnData: true,
+            kSecMatchLimit: kSecMatchLimitOne
+        ] as CFDictionary, &item)
+
+        guard status == errSecSuccess, let data = item as? Data else {
+            // The status matters: "not found" means Claude Code has never signed
+            // in, whereas -25308 (interaction not allowed) or -128 (user
+            // cancelled) mean the item is there but this app is not on its
+            // access list. Those need very different advice, so record which.
+            Log.usage.error("keychain read failed: OSStatus \(status) (\(Self.explain(status), privacy: .public))")
+            throw Self.wasRefused(status)
+                ? UsageProviderError.accessDenied
+                : UsageProviderError.needsAuth
+        }
+        return data
     }
 
     /// Which keychain refusal this was. "Not found" means Claude Code has never

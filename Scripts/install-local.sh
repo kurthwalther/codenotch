@@ -49,15 +49,23 @@ case "$ACTION" in
       | awk -F' = ' '/ BUILT_PRODUCTS_DIR/ {print $2; exit}')/Codenotch.app"
     echo "built: $APP"
     if [ "$ACTION" = install ]; then
-      pkill -x Codenotch 2>/dev/null || true
-      for _ in $(seq 1 200); do pgrep -x Codenotch >/dev/null || break; done
+      # Only the copy being replaced, found by its exact executable path. A
+      # name pattern handed to pkill can match far more than it looks like.
+      PID=$(pgrep -f '^/Applications/Codenotch.app/Contents/MacOS/Codenotch$' || true)
+      if [ -n "$PID" ]; then
+        kill $PID
+        for _ in $(seq 1 100); do kill -0 $PID 2>/dev/null || break; sleep 0.05; done
+      fi
       if [ -d /Applications/Codenotch.app ]; then
         mv /Applications/Codenotch.app ~/.Trash/"Codenotch-replaced-$(date +%H%M%S).app"
       fi
       ditto "$APP" /Applications/Codenotch.app
+      # Launch Services caches Info.plist keys such as LSUIElement per path;
+      # re-registering makes it read the new bundle's, not the old one's.
+      /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Codenotch.app
       open /Applications/Codenotch.app
       echo "installed and launched /Applications/Codenotch.app"
-      echo "next: Settings > General > Open Codenotch at login; choose Always Allow when macOS asks about the keychain"
+      echo "next: Settings > General > Open Codenotch at login"
     fi ;;
   *) echo "usage: $0 [install|--build|--test]" >&2; exit 2 ;;
 esac
